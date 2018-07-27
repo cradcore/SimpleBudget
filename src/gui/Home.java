@@ -22,10 +22,10 @@ public class Home {
     // Initialize the contents of the frame.
     private void initialize() {
         window.setTitle("Simple Budget");
-        window.setBounds(100, 100, 1300, 690);
+        window.setBounds(100, 100, 1600, 900);
         window.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
-        MigLayout layout = new MigLayout("fillx", "[right]rel[grow,fill]", "[]10[]");
+        MigLayout layout = new MigLayout("gap rel 0", "grow");
         JPanel panel = new JPanel(layout);
         window.setContentPane(panel);
 
@@ -49,12 +49,12 @@ public class Home {
         CC constraints = new CC();
 
         JButton b1 = new JButton();
-        b1.setIcon(new ImageIcon(new ImageIcon("resources/home-all_accounts.png").getImage().getScaledInstance(398, 532, Image.SCALE_DEFAULT)));
+        b1.setIcon(new ImageIcon(new ImageIcon("resources/home-all_accounts.png").getImage().getScaledInstance(500, 665, Image.SCALE_DEFAULT)));
         b1.setBorderPainted(false);
         b1.setBorder(null);
         b1.setContentAreaFilled(false);
         b1.setFont(new Font("Lato", Font.BOLD, 60));
-        panel.add(b1, constraints);
+        panel.add(b1, "alignx left");
         b1.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent arg0) {
@@ -63,7 +63,7 @@ public class Home {
         });
 
         JButton b2 = new JButton();
-        b2.setIcon(new ImageIcon(new ImageIcon("resources/home-budget.png").getImage().getScaledInstance(398, 532, Image.SCALE_DEFAULT)));
+        b2.setIcon(new ImageIcon(new ImageIcon("resources/home-budget.png").getImage().getScaledInstance(500, 665, Image.SCALE_DEFAULT)));
         b2.setBorderPainted(false);
         b2.setBorder(null);
         b2.setContentAreaFilled(false);
@@ -73,15 +73,15 @@ public class Home {
             public void mouseClicked(MouseEvent arg0) {
             }
         });
-        panel.add(b2, constraints);
+        panel.add(b2, "id b1, alignx center");
 
         JButton b3 = new JButton();
-        b3.setIcon(new ImageIcon(new ImageIcon("resources/home-reports.png").getImage().getScaledInstance(398, 532, Image.SCALE_DEFAULT)));
+        b3.setIcon(new ImageIcon(new ImageIcon("resources/home-reports.png").getImage().getScaledInstance(500, 665, Image.SCALE_DEFAULT)));
         b3.setBorderPainted(false);
         b3.setBorder(null);
         b3.setContentAreaFilled(false);
         b3.setFont(new Font("Lato", Font.BOLD, 60));
-        panel.add(b3, constraints);
+        panel.add(b3, "alignx right");
         b3.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent arg0) {

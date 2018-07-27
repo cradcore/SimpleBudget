@@ -1,8 +1,6 @@
 package gui;
 
-import java.awt.Font;
-import java.awt.Image;
-import java.awt.Insets;
+import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import javax.swing.*;
@@ -23,8 +21,6 @@ public class AllAccounts {
     // Initialize the contents of the frame.
     private void initialize() {
         window.setTitle("Simple Budget");
-        window.setBounds(100, 100, 1300, 690);
-        window.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         MigLayout layout = new MigLayout("fillx", "[right]rel[grow,fill]", "[]10[]");
         JPanel panel = new JPanel(layout);
@@ -47,7 +43,7 @@ public class AllAccounts {
 
     private void addMenu(JPanel panel) {
         Insets margins = new Insets(0, 0, 0, 0);
-        MigLayout layout = new MigLayout("fillx", "[right]rel[grow,fill]", "[]10[]");
+        MigLayout layout = new MigLayout("gap rel 0", "grow");
         JPanel parentPanel = new JPanel(layout);
 
         JButton b1 = new JButton();
@@ -81,6 +77,35 @@ public class AllAccounts {
         });
 
 
+        JButton b3 = new JButton();
+        b3.setMargin(margins);
+        b3.setIcon(new ImageIcon("resources/all_accounts-side_menu_3.png"));
+        b3.setBorderPainted(false);
+        b3.setBorder(null);
+        b3.setContentAreaFilled(false);
+        b3.setFont(new Font("Lato", Font.BOLD, 60));
+        parentPanel.add(b3, "wrap");
+        b3.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent arg0) {
+
+            }
+        });
         window.add(parentPanel, "dock west");
+
+        JButton b4 = new JButton();
+        b4.setMargin(margins);
+        b4.setIcon(new ImageIcon("resources/all_accounts-side_menu_4.png"));
+        b4.setBorderPainted(false);
+        b4.setBorder(null);
+        b4.setContentAreaFilled(false);
+        b4.setFont(new Font("Lato", Font.BOLD, 60));
+        parentPanel.add(b4, "wrap");
+        b4.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent arg0) {
+
+            }
+        });
     }
 }
