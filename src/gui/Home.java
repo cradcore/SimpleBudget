@@ -22,8 +22,6 @@ public class Home {
     // Initialize the contents of the frame.
     private void initialize() {
         window.setTitle("Simple Budget");
-        window.setBounds(100, 100, 1600, 900);
-        window.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         MigLayout layout = new MigLayout("gap rel 0", "grow");
         JPanel panel = new JPanel(layout);
@@ -31,7 +29,6 @@ public class Home {
 
         addTitle(panel);
         addButtons(panel);
-
     }
 
     private void addTitle(JPanel panel) {
@@ -58,6 +55,7 @@ public class Home {
         b1.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent arg0) {
+                System.out.println("All Accounts clicked");
                 new AllAccounts(window);
             }
         });
@@ -71,6 +69,7 @@ public class Home {
         b2.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent arg0) {
+                System.out.println("Budget clicked");
             }
         });
         panel.add(b2, "id b1, alignx center");
@@ -85,6 +84,7 @@ public class Home {
         b3.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent arg0) {
+                System.out.println("Reports clicked");
             }
         });
     }
