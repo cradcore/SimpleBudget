@@ -3,6 +3,7 @@ package gui;
 import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableModel;
@@ -106,7 +107,7 @@ public class AllAccounts {
 
     private void addTopMenu() {
         Insets margins = new Insets(0, 0, 0, 0);
-        JPanel panel = new JPanel(new MigLayout("fill, insets 0, gap rel 0, hidemode 2", "grow"));
+        JPanel panel = new JPanel(new MigLayout("fill, insets 0, gap rel 0, hidemode 3", "grow"));
         panel.setName("JPanel - Top Menu");
         panel.setBackground(Color.decode("#547cc4"));
         CC constraints = new CC();
@@ -114,6 +115,34 @@ public class AllAccounts {
         constraints.wrap();
 
         JButton viewAccountButton =  new JButton();
+
+        ResultSet rs = SQLConnector.select("SELECT DISTINCT accountName FROM Entry");
+        ArrayList<String> categories = new ArrayList<String>();
+        categories.add("All Accounts");
+        try {
+            while (rs.next())
+                categories.add(rs.getString("accountName"));
+        } catch (Exception e) { e.printStackTrace(); }
+
+        JComboBox<String> jcb = new JComboBox<String>(categories.toArray(new String[0]));
+        jcb.setName("Top Menu - JComboBox");
+        jcb.setFont(new Font ("Lato", Font.PLAIN, 22));
+        jcb.setForeground(Color.WHITE);
+        jcb.setBackground(Color.decode("#547cc4"));
+        jcb.setBorder(new EmptyBorder(0, 30, 0, 0));
+        jcb.setVisible(false);
+        jcb.addActionListener (new ActionListener () {
+            public void actionPerformed(ActionEvent e) {
+                if(jcb.getSelectedItem().toString().equals("All Accounts")) {
+                    jcb.setVisible(false);
+                    viewAccountButton.setVisible(true);
+                }
+                viewOneAccount(jcb.getSelectedItem().toString());
+            }
+        });
+        panel.add(jcb);
+
+        viewAccountButton.setVisible(true);
         viewAccountButton.setIcon(new ImageIcon(new ImageIcon("resources/all_accounts-top_menu_1.png").getImage()));
         viewAccountButton.setBorderPainted(false);
         viewAccountButton.setBorder(null);
@@ -123,7 +152,10 @@ public class AllAccounts {
         viewAccountButton.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent arg0) {
-                System.out.println("View Account clicked");
+                jcb.setVisible(true);
+                viewAccountButton.setVisible(false);
+                jcb.showPopup();
+                jcb.setPopupVisible(true);
             }
         });
 
@@ -326,13 +358,13 @@ public class AllAccounts {
 
         if(!checkTransactionValidity(jt, data)) {
             for (Component c : window.getContentPane().getComponents())
-                if (c.getName().equals("New Transaction Buttons")) {
+                if (c.getName().equals("JPanel - New Transaction Buttons")) {
                     ((JLabel) ((JPanel) c).getComponent(1)).setVisible(true);
                     return false;
                 }
         }
         for (Component c : window.getContentPane().getComponents())
-            if (c.getName().equals("New Transaction Buttons"))
+            if (c.getName().equals("JPanel - New Transaction Buttons"))
                 ((JLabel) ((JPanel) c).getComponent(1)).setVisible(false);
 
         String[] date = data[1].split("/");
@@ -414,5 +446,17 @@ public class AllAccounts {
                 else data[i][j] = entries.get(i).get(j);
 
         return data;
+    }
+
+    private void viewOneAccount(String accountName) {
+        String[][] tableData;
+        if(accountName.equals("All Accounts"))
+            tableData = getTableData(SQLConnector.select("SELECT * FROM Entry"));
+        else tableData = getTableData(SQLConnector.select("SELECT * FROM Entry WHERE accountName = '" + accountName + "'"));
+        String[] headings = {"Account", "Date", "Payee", "Category", "Memo", "Outflow", "Inflow"};
+
+        for(Component c : window.getContentPane().getComponents())
+            if(c.getName().equals("JPanel - Table"))
+                ((DefaultTableModel) ((JTable) ((((JScrollPane) ((JPanel) c).getComponent(0)).getViewport()).getView())).getModel()).setDataVector(tableData, headings);;
     }
 }
