@@ -6,18 +6,16 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableCellRenderer;
-import javax.swing.table.TableModel;
-import javax.swing.table.TableRowSorter;
-
+import com.github.lgooddatepicker.components.DatePicker;
+import com.github.lgooddatepicker.components.DatePickerSettings;
 import net.miginfocom.layout.CC;
-import net.miginfocom.layout.Grid;
 import net.miginfocom.swing.*;
 import sqlConnector.SQLConnector;
 import java.sql.ResultSet;
 import java.text.NumberFormat;
 import java.util.ArrayList;
 
-public class AllAccounts {
+class AllAccounts {
 
     private JFrame window;
 
@@ -192,7 +190,7 @@ public class AllAccounts {
             if(c.getName().equals("JPanel - New Transaction"))
                 comp = ((JPanel) c).getComponents();
         ((JTextField) comp[0]).setText("Account");
-        ((JTextField) comp[1]).setText("Date");
+//        ((JTextField) comp[1]).setText("Date");
         ((JTextField) comp[2]).setText("Payee");
         ((JTextField) comp[3]).setText("Category");
         ((JTextField) comp[4]).setText("Memo");
@@ -252,8 +250,9 @@ public class AllAccounts {
         panel.setPreferredSize(new Dimension(panel.getWidth(), 45));
 
         setTextFieldNewTransaction(panel, "Account", 150);
-        setTextFieldNewTransaction(panel, "Date", 100);
-        setTextFieldNewTransaction(panel, "Payee", 200);
+//        setTextFieldNewTransaction(panel, "Date", 100);
+        addDateDropdown(panel);
+        setTextFieldNewTransaction(panel, "Payee", 180);
         setTextFieldNewTransaction(panel, "Category", 150);
         setTextFieldNewTransaction(panel, "Memo", 450);
         setTextFieldNewTransaction(panel, "Outflow", 75);
@@ -263,6 +262,26 @@ public class AllAccounts {
         window.add(panel, "dock north, hidemode 2");
 
         setButtonsNewTransaction();
+    }
+
+    private void addDateDropdown(JPanel panel) {
+       DatePickerSettings ds;
+       DatePicker date;
+       ds = new DatePickerSettings();
+       ds.setFormatForDatesCommonEra("MM/dd/yyy");
+       date = new DatePicker(ds);
+       ds.setFontCalendarDateLabels(new Font("Lato", Font.PLAIN, 22));
+       ds.setFontCalendarWeekdayLabels(new Font("Lato", Font.PLAIN, 22));
+       ds.setFontClearLabel(new Font("Lato", Font.PLAIN, 22));
+       ds.setFontMonthAndYearMenuLabels(new Font("Lato", Font.PLAIN, 22));
+       ds.setFontMonthAndYearNavigationButtons(new Font("Lato", Font.PLAIN, 22));
+       ds.setFontTodayLabel(new Font("Lato", Font.PLAIN, 22));
+       ds.setFontValidDate(new Font("Lato", Font.PLAIN, 13));
+       date.setForeground(Color.GRAY);
+       date.setPreferredSize(new Dimension(80, 32));
+       date.setDateToToday();
+       panel.add(date);
+
     }
 
     private void setTextFieldNewTransaction(JPanel panel, String text, int width) {
@@ -341,14 +360,14 @@ public class AllAccounts {
         window.add(panel, "dock north, hidemode 2");
     }
 
-    private boolean saveTransaction() {
+    private boolean saveTransaction()   {
         JPanel jt = null;
         for(Component c : window.getContentPane().getComponents())
             if(c.getName().equals("JPanel - New Transaction"))
                 jt = (JPanel) c;
 
-        String entryID = getEntryID();
-        String[] data = {((JTextField) jt.getComponent(0)).getText(), ((JTextField) jt.getComponent(1)).getText(),
+        String date = ((DatePicker) jt.getComponent(1)).getDateStringOrSuppliedString("mm/dd/yyyy");
+        String[] data = {((JTextField) jt.getComponent(0)).getText(), date,
                 ((JTextField) jt.getComponent(2)).getText(), ((JTextField) jt.getComponent(3)).getText(),
                 ((JTextField) jt.getComponent(4)).getText(), ((JTextField) jt.getComponent(5)).getText(),
                 ((JTextField) jt.getComponent(6)).getText()};
@@ -367,10 +386,10 @@ public class AllAccounts {
             if (c.getName().equals("JPanel - New Transaction Buttons"))
                 ((JLabel) ((JPanel) c).getComponent(1)).setVisible(false);
 
-        String[] date = data[1].split("/");
-        int month = Integer.parseInt(date[0]);
-        int day = Integer.parseInt(date[1]);
-        int year = Integer.parseInt(date[2]);
+        String[] d = date.split("-");
+        int month = Integer.parseInt(d[1]);
+        int day = Integer.parseInt(d[2]);
+        int year = Integer.parseInt(d[0]);
 
         SQLConnector.update("INSERT INTO `simpleBudget`.`Entry` (`entryID`, `accountName`, `dateDay`, " +
                 "`dateMonth`, `dateYear`, `payee`, `childCategory`, `memo`, `outflow`, `inflow`) VALUES ('" +
