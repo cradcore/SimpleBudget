@@ -38,6 +38,8 @@ class AllAccounts {
         addTopMenu();
         addNewTransaction();
         addTable();
+        toggleTransactionButtons();
+
     }
 
     private void addTitle() {
@@ -122,7 +124,7 @@ class AllAccounts {
                 categories.add(rs.getString("accountName"));
         } catch (Exception e) { e.printStackTrace(); }
 
-        JComboBox<String> jcb = new JComboBox<String>(categories.toArray(new String[0]));
+        JComboBox<String> jcb = new JComboBox<>(categories.toArray(new String[0]));
         jcb.setName("Top Menu - JComboBox");
         jcb.setFont(new Font ("Lato", Font.PLAIN, 22));
         jcb.setForeground(Color.WHITE);
@@ -189,13 +191,13 @@ class AllAccounts {
         for(Component c : window.getContentPane().getComponents())
             if(c.getName().equals("JPanel - New Transaction"))
                 comp = ((JPanel) c).getComponents();
-        ((JTextField) comp[0]).setText("Account");
+        ((JTextField) comp[1]).setText("Account");
 //        ((JTextField) comp[1]).setText("Date");
-        ((JTextField) comp[2]).setText("Payee");
-        ((JTextField) comp[3]).setText("Category");
-        ((JTextField) comp[4]).setText("Memo");
-        ((JTextField) comp[5]).setText("Outflow");
-        ((JTextField) comp[6]).setText("Inflow");
+        ((JTextField) comp[3]).setText("Payee");
+        ((JTextField) comp[4]).setText("Category");
+        ((JTextField) comp[5]).setText("Memo");
+        ((JTextField) comp[6]).setText("Outflow");
+        ((JTextField) comp[7]).setText("Inflow");
     }
 
     private void addTable() {
@@ -244,14 +246,17 @@ class AllAccounts {
     }
 
     private void addNewTransaction() {
+
         JPanel panel = new JPanel(new MigLayout("fill, insets 0, gap rel 0", "grow"));
         panel.setName("JPanel - New Transaction");
         panel.setBackground(Color.decode("#547cc4"));
         panel.setPreferredSize(new Dimension(panel.getWidth(), 45));
 
+        addAccountDropdown(panel);
         setTextFieldNewTransaction(panel, "Account", 150);
 //        setTextFieldNewTransaction(panel, "Date", 100);
         addDateDropdown(panel);
+
         setTextFieldNewTransaction(panel, "Payee", 180);
         setTextFieldNewTransaction(panel, "Category", 150);
         setTextFieldNewTransaction(panel, "Memo", 450);
@@ -262,6 +267,44 @@ class AllAccounts {
         window.add(panel, "dock north, hidemode 2");
 
         setButtonsNewTransaction();
+    }
+
+    private void addAccountDropdown(JPanel panel) {
+        for(Component c : panel.getComponents())
+            System.out.println(c.getName());
+        ResultSet rs = SQLConnector.select("SELECT DISTINCT accountName FROM Entry");
+        ArrayList<String> categories = new ArrayList<String>();
+        try {
+            while (rs.next())
+                categories.add(rs.getString("accountName"));
+        } catch (Exception e) { e.printStackTrace(); }
+        categories.add("<Add New Account>");
+
+        JComboBox<String> jcb = new JComboBox<>(categories.toArray(new String[0]));
+        jcb.setName("Account Dropdown");
+        jcb.setFont(new Font ("Lato", Font.PLAIN, 14));
+//        jcb.setForeground(Color.WHITE);
+//        jcb.setBackground(Color.decode("#547cc4"));
+        jcb.setPreferredSize(new Dimension(100, 32));
+        jcb.setVisible(true);
+        jcb.addActionListener (new ActionListener () {
+            public void actionPerformed(ActionEvent e) {
+
+                if(jcb.getSelectedItem().equals("<Add New Account>"))
+                    addNewAccount(panel);
+            }
+        });
+        panel.add(jcb, "hidemode 3");
+
+    }
+
+    private void addNewAccount(JPanel panel) {
+        for(Component c : panel.getComponents()) {
+            if (c.getName() != null && c.getName().equals("Account Dropdown"))
+                c.setVisible(false);
+            if(c.getName() != null && c.getName().equals("New Transaction - Account"))
+                c.setVisible(true);
+        }
     }
 
     private void addDateDropdown(JPanel panel) {
@@ -280,6 +323,7 @@ class AllAccounts {
        date.setForeground(Color.GRAY);
        date.setPreferredSize(new Dimension(80, 32));
        date.setDateToToday();
+       date.setName("New Transaction - Date");
        panel.add(date);
 
     }
@@ -290,9 +334,10 @@ class AllAccounts {
         jtf.setPreferredSize(new Dimension(width, 30));
         jtf.setHorizontalAlignment(JTextField.CENTER);
         jtf.setBorder(null);
+        jtf.setName("New Transaction - " + text);
         if(text.equals("Inflow"))
-            panel.add(jtf, "push, align center, wrap");
-        else panel.add(jtf, "push, align center");
+            panel.add(jtf, "push, align center, hidemode 3, wrap");
+        else panel.add(jtf, "push, align center, hidemode 3");
         jtf.addFocusListener(new FocusListener() {
             @Override
             public void focusGained(FocusEvent e) {
@@ -306,6 +351,8 @@ class AllAccounts {
                     jtf.setText(text);
             }
         });
+        if(jtf.getName().equals("New Transaction - Account"))
+            jtf.setVisible(false);
     }
 
     private void setButtonsNewTransaction() {
@@ -365,12 +412,21 @@ class AllAccounts {
         for(Component c : window.getContentPane().getComponents())
             if(c.getName().equals("JPanel - New Transaction"))
                 jt = (JPanel) c;
+        String date = null;
+        for(Component c : jt.getComponents())
+            if(c.getName().equals("New Transaction - Date"))
+                date = ((DatePicker) c).getDateStringOrEmptyString();
 
-        String date = ((DatePicker) jt.getComponent(1)).getDateStringOrSuppliedString("mm/dd/yyyy");
-        String[] data = {((JTextField) jt.getComponent(0)).getText(), date,
-                ((JTextField) jt.getComponent(2)).getText(), ((JTextField) jt.getComponent(3)).getText(),
+//        String date = ((DatePicker) jt.getComponent(2)).getDateStringOrSuppliedString("mm/dd/yyyy");
+        String account = null;
+        if(((JTextField) jt.getComponent(1)).getText().equals("Account")) {
+            account = ((JComboBox<String>) jt.getComponent(0)).getSelectedItem().toString();
+        }
+        else account = ((JTextField) jt.getComponent(1)).getText();
+
+        String[] data = {account, date, ((JTextField) jt.getComponent(3)).getText(),
                 ((JTextField) jt.getComponent(4)).getText(), ((JTextField) jt.getComponent(5)).getText(),
-                ((JTextField) jt.getComponent(6)).getText()};
+                ((JTextField) jt.getComponent(6)).getText(), ((JTextField) jt.getComponent(7)).getText()};
 
         if(data[4].equals("Memo"))
             data[4] = "";
@@ -476,6 +532,6 @@ class AllAccounts {
 
         for(Component c : window.getContentPane().getComponents())
             if(c.getName().equals("JPanel - Table"))
-                ((DefaultTableModel) ((JTable) ((((JScrollPane) ((JPanel) c).getComponent(0)).getViewport()).getView())).getModel()).setDataVector(tableData, headings);;
+                ((DefaultTableModel) ((JTable) ((((JScrollPane) ((JPanel) c).getComponent(0)).getViewport()).getView())).getModel()).setDataVector(tableData, headings);
     }
 }
