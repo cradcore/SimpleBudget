@@ -38,8 +38,6 @@ class AllAccounts {
         addTopMenu();
         addNewTransaction();
         addTable();
-        toggleTransactionButtons();
-
     }
 
     private void addTitle() {
@@ -246,22 +244,19 @@ class AllAccounts {
     }
 
     private void addNewTransaction() {
-
         JPanel panel = new JPanel(new MigLayout("fill, insets 0, gap rel 0", "grow"));
         panel.setName("JPanel - New Transaction");
         panel.setBackground(Color.decode("#547cc4"));
         panel.setPreferredSize(new Dimension(panel.getWidth(), 45));
 
-        addAccountDropdown(panel);
-        setTextFieldNewTransaction(panel, "Account", 150);
-//        setTextFieldNewTransaction(panel, "Date", 100);
-        addDateDropdown(panel);
-
-        setTextFieldNewTransaction(panel, "Payee", 180);
-        setTextFieldNewTransaction(panel, "Category", 150);
-        setTextFieldNewTransaction(panel, "Memo", 450);
-        setTextFieldNewTransaction(panel, "Outflow", 75);
-        setTextFieldNewTransaction(panel, "Inflow", 75);
+        addAccountDropdown(panel);                                              // Account dropdown
+        setTextFieldNewTransaction(panel, "Account", 150);            // Account text field
+        addDateDropdown(panel);                                                 // Date dropdown
+        setTextFieldNewTransaction(panel, "Payee", 180);              // Payee text field
+        setTextFieldNewTransaction(panel, "Category", 150);           // Category text field
+        setTextFieldNewTransaction(panel, "Memo", 450);               // Memo text field
+        setTextFieldNewTransaction(panel, "Outflow", 75);             // Outflow text field
+        setTextFieldNewTransaction(panel, "Inflow", 75);              // Inflow text field
 
         panel.setVisible(false);
         window.add(panel, "dock north, hidemode 2");
@@ -270,8 +265,6 @@ class AllAccounts {
     }
 
     private void addAccountDropdown(JPanel panel) {
-        for(Component c : panel.getComponents())
-            System.out.println(c.getName());
         ResultSet rs = SQLConnector.select("SELECT DISTINCT accountName FROM Entry");
         ArrayList<String> categories = new ArrayList<String>();
         try {
@@ -283,8 +276,6 @@ class AllAccounts {
         JComboBox<String> jcb = new JComboBox<>(categories.toArray(new String[0]));
         jcb.setName("Account Dropdown");
         jcb.setFont(new Font ("Lato", Font.PLAIN, 14));
-//        jcb.setForeground(Color.WHITE);
-//        jcb.setBackground(Color.decode("#547cc4"));
         jcb.setPreferredSize(new Dimension(100, 32));
         jcb.setVisible(true);
         jcb.addActionListener (new ActionListener () {
@@ -417,11 +408,9 @@ class AllAccounts {
             if(c.getName().equals("New Transaction - Date"))
                 date = ((DatePicker) c).getDateStringOrEmptyString();
 
-//        String date = ((DatePicker) jt.getComponent(2)).getDateStringOrSuppliedString("mm/dd/yyyy");
         String account = null;
-        if(((JTextField) jt.getComponent(1)).getText().equals("Account")) {
+        if(((JTextField) jt.getComponent(1)).getText().equals("Account"))
             account = ((JComboBox<String>) jt.getComponent(0)).getSelectedItem().toString();
-        }
         else account = ((JTextField) jt.getComponent(1)).getText();
 
         String[] data = {account, date, ((JTextField) jt.getComponent(3)).getText(),
@@ -431,33 +420,47 @@ class AllAccounts {
         if(data[4].equals("Memo"))
             data[4] = "";
 
-        if(!checkTransactionValidity(jt, data)) {
+        if(!checkTransactionValidity(jt, data))
             for (Component c : window.getContentPane().getComponents())
                 if (c.getName().equals("JPanel - New Transaction Buttons")) {
                     ((JLabel) ((JPanel) c).getComponent(1)).setVisible(true);
                     return false;
                 }
-        }
+
         for (Component c : window.getContentPane().getComponents())
             if (c.getName().equals("JPanel - New Transaction Buttons"))
                 ((JLabel) ((JPanel) c).getComponent(1)).setVisible(false);
 
         String[] d = date.split("-");
-        int month = Integer.parseInt(d[1]);
-        int day = Integer.parseInt(d[2]);
-        int year = Integer.parseInt(d[0]);
-
         SQLConnector.update("INSERT INTO `simpleBudget`.`Entry` (`entryID`, `accountName`, `dateDay`, " +
                 "`dateMonth`, `dateYear`, `payee`, `childCategory`, `memo`, `outflow`, `inflow`) VALUES ('" +
-                getEntryID() + "', '" + data[0] + "', " + day + ", " + month + ", " + year + ", '" + data[2] + "', '" +
-                data[3] + "', '" + data[4] + "', " + data[5] + ", " + data[6] + ")");
+                getEntryID() + "', '" + data[0] + "', " + Integer.parseInt(d[2]) + ", " + Integer.parseInt(d[1]) +
+                ", " + Integer.parseInt(d[0]) + ", '" + data[2] + "', '" + data[3] + "', '" + data[4] + "', " +
+                data[5] + ", " + data[6] + ")");
 
         String[][] tableData = getTableData(SQLConnector.select("SELECT * FROM Entry"));
         String[] headings = {"Account", "Date", "Payee", "Category", "Memo", "Outflow", "Inflow"};
 
-        for(Component c : window.getContentPane().getComponents())
-            if(c.getName().equals("JPanel - Table"))
+        for(Component c : window.getContentPane().getComponents()) {
+            if (c.getName().equals("JPanel - Table"))
                 ((DefaultTableModel) ((JTable) ((((JScrollPane) ((JPanel) c).getComponent(0)).getViewport()).getView())).getModel()).setDataVector(tableData, headings);
+            if(c.getName().equals("JPanel - New Transaction"))
+                for(Component cc : ((JPanel) c).getComponents()) {
+                    String ccName = cc.getName();
+                    if (ccName.equals("Account Dropdown")) {
+                        ((JComboBox<String>) cc).addItem(data[0]);
+                        cc.setVisible(true);
+                        cc.repaint();
+                        cc.validate();
+                    }
+                    if(ccName.equals("New Transaction - Account"))
+                        cc.setVisible(false);
+
+                }
+            c.repaint();
+            c.validate();
+        }
+
         return true;
     }
 
