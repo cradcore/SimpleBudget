@@ -14,7 +14,7 @@ public class Run {
         EventQueue.invokeLater(new Runnable() {
             public void run() {
                 try {
-                    new Home(window);
+                    new AllAccounts(window);
                 } catch (Exception e) {e.printStackTrace();}
             }
         });

@@ -4,7 +4,9 @@ import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableCellEditor;
 import javax.swing.table.TableCellRenderer;
 import com.github.lgooddatepicker.components.DatePicker;
 import com.github.lgooddatepicker.components.DatePickerSettings;
@@ -13,7 +15,10 @@ import net.miginfocom.swing.*;
 import sqlConnector.SQLConnector;
 import java.sql.ResultSet;
 import java.text.NumberFormat;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Date;
 
 class AllAccounts {
 
@@ -141,7 +146,7 @@ class AllAccounts {
         panel.add(jcb);
 
         viewAccountButton.setVisible(true);
-        viewAccountButton.setIcon(new ImageIcon(new ImageIcon("resources/all_accounts-top_menu_1.png").getImage()));
+        viewAccountButton.setIcon(new ImageIcon("resources/all_accounts-top_menu_1.png"));
         viewAccountButton.setBorderPainted(false);
         viewAccountButton.setBorder(null);
         viewAccountButton.setContentAreaFilled(false);
@@ -158,30 +163,76 @@ class AllAccounts {
         });
 
         JButton addTransactionButton =  new JButton();
-        addTransactionButton.setIcon(new ImageIcon(new ImageIcon("resources/all_accounts-top_menu_2.png").getImage()));
+        addTransactionButton.setIcon(new ImageIcon("resources/all_accounts-top_menu_2.png"));
         addTransactionButton.setBorderPainted(false);
         addTransactionButton.setBorder(null);
         addTransactionButton.setContentAreaFilled(false);
-        panel.add(addTransactionButton, "wrap");
+        panel.add(addTransactionButton);
         addTransactionButton.setMargin(margins);
         addTransactionButton.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent arg0) {
-                toggleTransactionButtons();
+                toggleTransactionButtons(true);
+            }
+        });
+
+        JButton editTransactionButton = new JButton();
+        editTransactionButton.setIcon(new ImageIcon("resources/all_accounts-top_menu_3.png"));
+        editTransactionButton.setBorderPainted(false);
+        editTransactionButton.setBorder(null);
+        editTransactionButton.setContentAreaFilled(false);
+        panel.add(editTransactionButton, "wrap");
+        editTransactionButton.setMargin(margins);
+        editTransactionButton.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent arg0) {
+                toggleTransactionButtons(false);
             }
         });
 
         window.add(panel, "dock north");
     }
 
-    private void toggleTransactionButtons() {
+    private void toggleTransactionButtons(boolean newTransaction) {
+        JScrollPane jsp = null;
+
         for(Component c : window.getContentPane().getComponents()) {
             if (c.getName().equals("JPanel - New Transaction"))
                 c.setVisible(!c.isVisible());
             if (c.getName().equals("JPanel - New Transaction Buttons"))
                 c.setVisible(!c.isVisible());
+            if (c.getName().equals("JPanel - Table"))
+                jsp = ((JScrollPane) ((JPanel) c).getComponent(0));
+
         }
-        resetTextFields();
+        if(newTransaction)
+            resetTextFields();
+        else {
+            fillTextFieldsWithRow((JTable)jsp.getViewport().getView());
+
+        }
+    }
+
+    private void fillTextFieldsWithRow(JTable jt) {
+        if(jt.getSelectedRow() == -1) {
+            System.out.println("MUST HAVE ROW SELECTED");
+            return;
+        }
+        ArrayList<String> row = new ArrayList<>();
+        for(int i = 0; i < 7; i++)
+            row.add(((String) jt.getValueAt(jt.getSelectedRow(), i)));
+
+        Component[] comp = null;
+        for(Component c : window.getContentPane().getComponents())
+            if(c.getName().equals("JPanel - New Transaction"))
+                comp = ((JPanel) c).getComponents();
+        ((JTextField) comp[1]).setText(row.get(0));
+        ((DatePicker) comp[2]).setDate(LocalDate.parse(row.get(1), DateTimeFormatter.ofPattern("M/d/yyyy")));
+        ((JTextField) comp[3]).setText(row.get(2));
+        ((JTextField) comp[4]).setText(row.get(3));
+        ((JTextField) comp[5]).setText(row.get(4));
+        ((JTextField) comp[6]).setText(row.get(5));
+        ((JTextField) comp[7]).setText(row.get(6));
     }
 
     private void resetTextFields() {
@@ -190,7 +241,7 @@ class AllAccounts {
             if(c.getName().equals("JPanel - New Transaction"))
                 comp = ((JPanel) c).getComponents();
         ((JTextField) comp[1]).setText("Account");
-//        ((JTextField) comp[1]).setText("Date");
+        ((DatePicker) comp[2]).setDate(LocalDate.now());
         ((JTextField) comp[3]).setText("Payee");
         ((JTextField) comp[4]).setText("Category");
         ((JTextField) comp[5]).setText("Memo");
@@ -208,17 +259,27 @@ class AllAccounts {
         String[] headings = {"Account", "Date", "Payee", "Category", "Memo", "Outflow", "Inflow"};
         String[][] data = getTableData(SQLConnector.select("SELECT * FROM Entry"));
 
-        JTable jt = new JTable() {
+        JTable jt = new JTable(data, headings) {
             @Override
             public Component prepareRenderer(TableCellRenderer renderer, int row, int column) {
                 Component comp = super.prepareRenderer(renderer, row, column);
-                comp.setBackground(row % 2 == 0 ? Color.decode("#c6d3eb") : Color.decode("#ecf0f8"));
+
+                if (isRowSelected(row))
+                    comp.setBackground(Color.decode("#7b99d1"));
+                else
+                    comp.setBackground(row % 2 == 0 ? Color.decode("#c6d3eb") : Color.decode("#ecf0f8"));
+
                 return comp;
             }
         };
 
-        jt.setModel(new DefaultTableModel());
-        ((DefaultTableModel) jt.getModel()).setDataVector(data, headings);
+//        jt.setDefaultRenderer(Object.class, new DefaultTableCellRenderer());
+        jt.setModel(new DefaultTableModel(data, headings) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        });
 
         jt.setName("JTable");
         jt.getTableHeader().setFont(new Font("Lato", Font.BOLD, 17));
@@ -235,7 +296,7 @@ class AllAccounts {
         jt.setAutoCreateRowSorter(true);
         jt.getRowSorter().toggleSortOrder(1);
 
-        JScrollPane jsp = new JScrollPane((jt));
+        JScrollPane jsp = new JScrollPane(jt);
         jsp.setName("Scroll Pane");
 
         panel.add(jsp, BorderLayout.CENTER);
@@ -375,7 +436,7 @@ class AllAccounts {
             @Override
             public void mouseClicked(MouseEvent e) {
                 label.setVisible(false);
-                toggleTransactionButtons();
+                toggleTransactionButtons(true);
             }
         });
         panel.add(cancel, "align right");
@@ -389,7 +450,7 @@ class AllAccounts {
             @Override
             public void mouseClicked(MouseEvent e) {
                 if(saveTransaction())
-                    toggleTransactionButtons();
+                    toggleTransactionButtons(true);
             }
         });
         panel.add(save, "align right");
@@ -398,7 +459,7 @@ class AllAccounts {
         window.add(panel, "dock north, hidemode 2");
     }
 
-    private boolean saveTransaction()   {
+    private boolean saveTransaction() {
         JPanel jt = null;
         for(Component c : window.getContentPane().getComponents())
             if(c.getName().equals("JPanel - New Transaction"))
@@ -432,7 +493,16 @@ class AllAccounts {
                 ((JLabel) ((JPanel) c).getComponent(1)).setVisible(false);
 
         String[] d = date.split("-");
-        SQLConnector.update("INSERT INTO `simpleBudget`.`Entry` (`entryID`, `accountName`, `dateDay`, " +
+        if(checkIfEdit(data)) {
+                ResultSet rs = SQLConnector.select("SELECT * FROM Entry WHERE accountName = '" + data[0] +
+                        "' AND dateDay = " + d[2] + " AND dateMonth = " + d[1] + " AND dateYear = " + d[0] +
+                        " AND childCategory = '" + data[3] + "' AND memo = '" + data[4] + "'" + " AND outflow = " + data[5] +
+                        " AND inflow = " + data[6]);
+                try {
+
+                } catch (Exception e) { e.printStackTrace(); }
+        }
+        else    SQLConnector.update("INSERT INTO `simpleBudget`.`Entry` (`entryID`, `accountName`, `dateDay`, " +
                 "`dateMonth`, `dateYear`, `payee`, `childCategory`, `memo`, `outflow`, `inflow`) VALUES ('" +
                 getEntryID() + "', '" + data[0] + "', " + Integer.parseInt(d[2]) + ", " + Integer.parseInt(d[1]) +
                 ", " + Integer.parseInt(d[0]) + ", '" + data[2] + "', '" + data[3] + "', '" + data[4] + "', " +
@@ -462,6 +532,20 @@ class AllAccounts {
         }
 
         return true;
+    }
+
+    private boolean checkIfEdit(String[] data) {
+        String[] date = data[1].split("-");
+        ResultSet rs = SQLConnector.select("SELECT * FROM Entry WHERE accountName = '" + data[0] +
+                "' AND dateDay = " + date[2] + " AND dateMonth = " + date[1] + " AND dateYear = " + date[0] +
+                " AND childCategory = '" + data[3] + "' AND memo = '" + data[4] + "'" + " AND outflow = " + data[5] +
+                " AND inflow = " + data[6]);
+        try {
+            while (rs.next()) {
+                return true;
+            }
+        } catch (Exception e) { e.printStackTrace(); }
+        return false;
     }
 
     private boolean checkTransactionValidity(JPanel panel, String[] data) {
