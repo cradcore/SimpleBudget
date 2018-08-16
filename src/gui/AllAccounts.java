@@ -566,9 +566,8 @@ class AllAccounts {
     private boolean checkIfEdit(String entryID) {
         ResultSet rs = SQLConnector.select("SELECT * FROM Entry WHERE entryID = '" + entryID + "'");
         try {
-            while (rs.next()) {
+            while (rs.next())
                 return true;
-            }
         } catch (Exception e) { e.printStackTrace(); }
         return false;
     }
