@@ -203,14 +203,11 @@ class AllAccounts {
                 c.setVisible(!c.isVisible());
             if (c.getName().equals("JPanel - Table"))
                 jsp = ((JScrollPane) ((JPanel) c).getComponent(0));
-
         }
         if(newTransaction)
             resetTextFields();
-        else {
-            fillTextFieldsWithRow((JTable)jsp.getViewport().getView());
-
-        }
+        else
+            fillTextFieldsWithRow((JTable) jsp.getViewport().getView());
     }
 
     private void fillTextFieldsWithRow(JTable jt) {
@@ -223,9 +220,11 @@ class AllAccounts {
             row.add(((String) jt.getValueAt(jt.getSelectedRow(), i)));
 
         Component[] comp = null;
-        for(Component c : window.getContentPane().getComponents())
-            if(c.getName().equals("JPanel - New Transaction"))
+        for(Component c : window.getContentPane().getComponents()) {
+            if (c.getName().equals("JPanel - New Transaction"))
                 comp = ((JPanel) c).getComponents();
+        }
+
         ((JTextField) comp[1]).setText(row.get(0));
         ((DatePicker) comp[2]).setDate(LocalDate.parse(row.get(1), DateTimeFormatter.ofPattern("M/d/yyyy")));
         ((JTextField) comp[3]).setText(row.get(2));
@@ -233,6 +232,25 @@ class AllAccounts {
         ((JTextField) comp[5]).setText(row.get(4));
         ((JTextField) comp[6]).setText(row.get(5));
         ((JTextField) comp[7]).setText(row.get(6));
+        String[] date = comp[2].toString().split("-");
+
+        String select = "SELECT * FROM Entry WHERE accountName = '" + ((JTextField) comp[1]).getText() +
+                "' AND dateDay = " + date[2] + " AND dateMonth = " + date[1] + " AND dateYear = " + date[0] +
+                " AND outflow = " + ((JTextField) comp[6]).getText().substring(1) + " AND inflow = " +
+                ((JTextField) comp[7]).getText().substring(1);
+
+        ResultSet rs = SQLConnector.select(select);
+        String entryID = null;
+        try {
+            rs.next();
+            entryID = rs.getString("entryID");
+        } catch (Exception e) { e.printStackTrace(); }
+
+        for(Component c : window.getContentPane().getComponents())
+            if(c.getName().equals("JPanel - New Transaction"))
+                for(Component cc : ((JPanel) c).getComponents())
+                    if(cc.getName().equals("New Transaction - Entry ID"))
+                        ((JLabel) cc).setText(entryID);
     }
 
     private void resetTextFields() {
@@ -318,6 +336,11 @@ class AllAccounts {
         setTextFieldNewTransaction(panel, "Memo", 450);               // Memo text field
         setTextFieldNewTransaction(panel, "Outflow", 75);             // Outflow text field
         setTextFieldNewTransaction(panel, "Inflow", 75);              // Inflow text field
+
+        JLabel label = new JLabel();                                            // Entry ID
+        label.setName("New Transaction - Entry ID");
+        label.setVisible(false);
+        panel.add(label);
 
         panel.setVisible(false);
         window.add(panel, "dock north, hidemode 2");
@@ -477,6 +500,11 @@ class AllAccounts {
         String[] data = {account, date, ((JTextField) jt.getComponent(3)).getText(),
                 ((JTextField) jt.getComponent(4)).getText(), ((JTextField) jt.getComponent(5)).getText(),
                 ((JTextField) jt.getComponent(6)).getText(), ((JTextField) jt.getComponent(7)).getText()};
+        if(data[5].charAt(0) == '$')
+            data[5] = data[5].substring(1);
+        if(data[6].charAt(0) == '$')
+            data[6] = data[6].substring(1);
+
 
         if(data[4].equals("Memo"))
             data[4] = "";
@@ -493,14 +521,18 @@ class AllAccounts {
                 ((JLabel) ((JPanel) c).getComponent(1)).setVisible(false);
 
         String[] d = date.split("-");
-        if(checkIfEdit(data)) {
-                ResultSet rs = SQLConnector.select("SELECT * FROM Entry WHERE accountName = '" + data[0] +
-                        "' AND dateDay = " + d[2] + " AND dateMonth = " + d[1] + " AND dateYear = " + d[0] +
-                        " AND childCategory = '" + data[3] + "' AND memo = '" + data[4] + "'" + " AND outflow = " + data[5] +
-                        " AND inflow = " + data[6]);
-                try {
+        String entryID = null;
+        for(Component c : window.getContentPane().getComponents())
+            if(c.getName().equals("JPanel - New Transaction"))
+                for(Component cc : ((JPanel) c).getComponents())
+                    if(cc.getName().equals("New Transaction - Entry ID"))
+                        entryID = ((JLabel) cc).getText();
 
-                } catch (Exception e) { e.printStackTrace(); }
+        if(checkIfEdit(entryID)) {
+                SQLConnector.update("UPDATE Entry SET accountName = '" + data[0] + "',  dateDay = " + d[2] +
+                ", dateMonth = " + d[1] + ", dateYear = " + d[0] + ", payee = '" + data[2] + "', childCategory = '" +
+                data[3] + "', memo = '" + data[4] + "', outflow = " + data[5] + ", inflow = " + data[6] + " WHERE entryID = " +
+                entryID);
         }
         else    SQLConnector.update("INSERT INTO `simpleBudget`.`Entry` (`entryID`, `accountName`, `dateDay`, " +
                 "`dateMonth`, `dateYear`, `payee`, `childCategory`, `memo`, `outflow`, `inflow`) VALUES ('" +
@@ -534,12 +566,8 @@ class AllAccounts {
         return true;
     }
 
-    private boolean checkIfEdit(String[] data) {
-        String[] date = data[1].split("-");
-        ResultSet rs = SQLConnector.select("SELECT * FROM Entry WHERE accountName = '" + data[0] +
-                "' AND dateDay = " + date[2] + " AND dateMonth = " + date[1] + " AND dateYear = " + date[0] +
-                " AND childCategory = '" + data[3] + "' AND memo = '" + data[4] + "'" + " AND outflow = " + data[5] +
-                " AND inflow = " + data[6]);
+    private boolean checkIfEdit(String entryID) {
+        ResultSet rs = SQLConnector.select("SELECT * FROM Entry WHERE entryID = '" + entryID + "'");
         try {
             while (rs.next()) {
                 return true;
