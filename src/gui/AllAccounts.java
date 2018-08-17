@@ -16,13 +16,14 @@ import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Objects;
 
 class AllAccounts {
 
     private JFrame window;
 
     // Create the application.
-    public AllAccounts(JFrame window) {
+    AllAccounts(JFrame window) {
         this.window = window;
         initialize();
         window.setVisible(true);
@@ -59,20 +60,20 @@ class AllAccounts {
         panel.setName("JPanel - Side Menu");
         panel.setBackground(Color.decode("#8faadc"));
 
-        sideMenuAddButton(panel, "Home", 1, 330, 130);
-        sideMenuAddButton(panel, "All Accounts", 2, 330, 100);
-        sideMenuAddButton(panel, "Budget", 3, 330, 100);
-        sideMenuAddButton(panel, "Reports", 4, 330, 800);
+        sideMenuAddButton(panel, "Home", 1, 130);
+        sideMenuAddButton(panel, "All Accounts", 2, 100);
+        sideMenuAddButton(panel, "Budget", 3, 100);
+        sideMenuAddButton(panel, "Reports", 4, 800);
 
         window.add(panel, "dock west");
     }
 
-    private void sideMenuAddButton(JPanel panel, String name, int image, int width, int height) {
+    private void sideMenuAddButton(JPanel panel, String name, int image, int height) {
         Insets margins = new Insets(0, 0, 0, 0);
         JButton button = new JButton();
         button.setName(name);
         button.setMargin(margins);
-        button.setIcon(new ImageIcon(new ImageIcon("resources/all_accounts-side_menu_" + image + ".png").getImage().getScaledInstance(width, height, Image.SCALE_DEFAULT)));
+        button.setIcon(new ImageIcon(new ImageIcon("resources/all_accounts-side_menu_" + image + ".png").getImage().getScaledInstance(330, height, Image.SCALE_DEFAULT)));
         button.setBorderPainted(false);
         button.setBorder(null);
         button.setContentAreaFilled(false);
@@ -117,10 +118,10 @@ class AllAccounts {
         JButton viewAccountButton =  new JButton();
 
         ResultSet rs = SQLConnector.select("SELECT DISTINCT accountName FROM Entry");
-        ArrayList<String> categories = new ArrayList<String>();
+        ArrayList<String> categories = new ArrayList<>();
         categories.add("All Accounts");
         try {
-            while (rs.next())
+            while (rs != null && rs.next())
                 categories.add(rs.getString("accountName"));
         } catch (Exception e) { e.printStackTrace(); }
 
@@ -133,7 +134,7 @@ class AllAccounts {
         jcb.setVisible(false);
         jcb.addActionListener (new ActionListener () {
             public void actionPerformed(ActionEvent e) {
-                if(jcb.getSelectedItem().toString().equals("All Accounts")) {
+                if(Objects.requireNonNull(jcb.getSelectedItem()).toString().equals("All Accounts")) {
                     jcb.setVisible(false);
                     viewAccountButton.setVisible(true);
                 }
@@ -204,7 +205,7 @@ class AllAccounts {
         if(newTransaction)
             resetTextFields();
         else
-            fillTextFieldsWithRow((JTable) jsp.getViewport().getView());
+            fillTextFieldsWithRow((JTable) Objects.requireNonNull(jsp).getViewport().getView());
     }
 
     private void fillTextFieldsWithRow(JTable jt) {
@@ -222,7 +223,7 @@ class AllAccounts {
                 comp = ((JPanel) c).getComponents();
         }
 
-        ((JTextField) comp[1]).setText(row.get(0));
+        ((JTextField) Objects.requireNonNull(comp)[1]).setText(row.get(0));
         ((DatePicker) comp[2]).setDate(LocalDate.parse(row.get(1), DateTimeFormatter.ofPattern("M/d/yyyy")));
         ((JTextField) comp[3]).setText(row.get(2));
         ((JTextField) comp[4]).setText(row.get(3));
@@ -239,7 +240,7 @@ class AllAccounts {
         ResultSet rs = SQLConnector.select(select);
         String entryID = null;
         try {
-            rs.next();
+            Objects.requireNonNull(rs).next();
             entryID = rs.getString("entryID");
         } catch (Exception e) { e.printStackTrace(); }
 
@@ -255,7 +256,7 @@ class AllAccounts {
         for(Component c : window.getContentPane().getComponents())
             if(c.getName().equals("JPanel - New Transaction"))
                 comp = ((JPanel) c).getComponents();
-        ((JTextField) comp[1]).setText("Account");
+        ((JTextField) Objects.requireNonNull(comp)[1]).setText("Account");
         ((DatePicker) comp[2]).setDate(LocalDate.now());
         ((JTextField) comp[3]).setText("Payee");
         ((JTextField) comp[4]).setText("Category");
@@ -347,9 +348,9 @@ class AllAccounts {
 
     private void addAccountDropdown(JPanel panel) {
         ResultSet rs = SQLConnector.select("SELECT DISTINCT accountName FROM Entry");
-        ArrayList<String> categories = new ArrayList<String>();
+        ArrayList<String> categories = new ArrayList<>();
         try {
-            while (rs.next())
+            while (Objects.requireNonNull(rs).next())
                 categories.add(rs.getString("accountName"));
         } catch (Exception e) { e.printStackTrace(); }
         categories.add("<Add New Account>");
@@ -362,7 +363,7 @@ class AllAccounts {
         jcb.addActionListener (new ActionListener () {
             public void actionPerformed(ActionEvent e) {
 
-                if(jcb.getSelectedItem().equals("<Add New Account>"))
+                if(Objects.requireNonNull(jcb.getSelectedItem()).equals("<Add New Account>"))
                     addNewAccount(panel);
             }
         });
@@ -485,11 +486,11 @@ class AllAccounts {
             if(c.getName().equals("JPanel - New Transaction"))
                 jt = (JPanel) c;
         String date = null;
-        for(Component c : jt.getComponents())
-            if(c.getName().equals("New Transaction - Date"))
+        for(Component c : Objects.requireNonNull(jt).getComponents())
+            if (c.getName().equals("New Transaction - Date"))
                 date = ((DatePicker) c).getDateStringOrEmptyString();
 
-        String account = null;
+        String account;
         if(((JTextField) jt.getComponent(1)).getText().equals("Account"))
             account = ((JComboBox<String>) jt.getComponent(0)).getSelectedItem().toString();
         else account = ((JTextField) jt.getComponent(1)).getText();
