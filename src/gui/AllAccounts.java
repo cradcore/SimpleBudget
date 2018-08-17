@@ -4,9 +4,7 @@ import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
-import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
-import javax.swing.table.TableCellEditor;
 import javax.swing.table.TableCellRenderer;
 import com.github.lgooddatepicker.components.DatePicker;
 import com.github.lgooddatepicker.components.DatePickerSettings;
@@ -18,7 +16,6 @@ import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Date;
 
 class AllAccounts {
 
@@ -569,9 +566,8 @@ class AllAccounts {
     private boolean checkIfEdit(String entryID) {
         ResultSet rs = SQLConnector.select("SELECT * FROM Entry WHERE entryID = '" + entryID + "'");
         try {
-            while (rs.next()) {
+            while (rs.next())
                 return true;
-            }
         } catch (Exception e) { e.printStackTrace(); }
         return false;
     }

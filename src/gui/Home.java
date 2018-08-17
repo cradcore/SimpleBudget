@@ -43,8 +43,6 @@ public class Home {
     }
 
     private void addButtons(JPanel panel) {
-        CC constraints = new CC();
-
         JButton b1 = new JButton();
         b1.setIcon(new ImageIcon(new ImageIcon("resources/home-all_accounts.png").getImage().getScaledInstance(500, 665, Image.SCALE_DEFAULT)));
         b1.setBorderPainted(false);
