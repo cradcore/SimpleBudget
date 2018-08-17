@@ -604,7 +604,7 @@ class AllAccounts {
         ArrayList<ArrayList<String>> entries = new ArrayList<ArrayList<String>>();
         try {
             while (rs.next()) {
-                ArrayList<String> entry = new ArrayList<String>();
+                ArrayList<String> entry = new ArrayList<>();
                 entry.add(rs.getString("accountName"));
                 entry.add(rs.getString("dateMonth") + "/" + rs.getString("dateDay")
                         + "/" + rs.getString("dateYear"));
