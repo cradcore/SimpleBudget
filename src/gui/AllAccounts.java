@@ -6,13 +6,11 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableCellRenderer;
-
 import com.github.lgooddatepicker.components.DatePicker;
 import com.github.lgooddatepicker.components.DatePickerSettings;
 import net.miginfocom.layout.CC;
 import net.miginfocom.swing.*;
 import sqlConnector.SQLConnector;
-
 import java.sql.ResultSet;
 import java.text.NumberFormat;
 import java.time.LocalDate;
@@ -24,7 +22,7 @@ class AllAccounts {
 
     private JFrame window;
 
-    // Create the application.
+    // Constructor
     AllAccounts(JFrame window) {
         this.window = window;
         initialize();
@@ -33,79 +31,19 @@ class AllAccounts {
 
     // Initialize the contents of the frame.
     private void initialize() {
-        window.setTitle("Simple Budget");
+        window.setTitle("Simple Budget - All Accounts");
+        window.getContentPane().removeAll();
         window.setContentPane(new JPanel(new MigLayout("fill, insets 0, gap rel 0", "grow")));
         window.getContentPane().setBackground(Color.decode("#b3c5e5"));
         window.setVisible(true);
+        window.getContentPane().revalidate();
+        window.getContentPane().repaint();
 
-        addSideMenu();
-        addTitle();
+        Home.addSideMenu(window, "All Accounts");
+        Home.addTitle(window, "All Accounts:");
         addTopMenu();
         addNewTransaction();
         addTable();
-    }
-
-    private void addTitle() {
-        JPanel panel = new JPanel(new MigLayout("fill, insets 0, gap rel 0", "grow"));
-        panel.setName("JPanel - Title");
-        panel.setBackground(new Color(0, 0, 0, 0));
-
-        JLabel title = new JLabel("All Accounts:");
-        title.setFont(new Font("Lato", Font.BOLD, 60));
-        panel.add(title, "align center");
-
-        window.add(panel, "dock north");
-    }
-
-    private void addSideMenu() {
-        JPanel panel = new JPanel(new MigLayout("fill, insets 0, gap rel 0", "grow"));
-        panel.setName("JPanel - Side Menu");
-        panel.setBackground(Color.decode("#8faadc"));
-
-        sideMenuAddButton(panel, "Home", 1, 130);
-        sideMenuAddButton(panel, "All Accounts", 2, 100);
-        sideMenuAddButton(panel, "Budget", 3, 100);
-        sideMenuAddButton(panel, "Reports", 4, 800);
-
-        window.add(panel, "dock west");
-    }
-
-    private void sideMenuAddButton(JPanel panel, String name, int image, int height) {
-        Insets margins = new Insets(0, 0, 0, 0);
-        JButton button = new JButton();
-        button.setName(name);
-        button.setMargin(margins);
-        button.setIcon(new ImageIcon(new ImageIcon("resources/all_accounts-side_menu_" + image + ".png").getImage().getScaledInstance(330, height, Image.SCALE_DEFAULT)));
-        button.setBorderPainted(false);
-        button.setBorder(null);
-        button.setContentAreaFilled(false);
-        button.setFont(new Font("Lato", Font.BOLD, 60));
-        panel.add(button, "wrap");
-
-        sideMenuAddButtonListener(button);
-    }
-
-    private void sideMenuAddButtonListener(JButton button) {
-        String name = button.getName();
-
-        button.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent arg0) {
-                System.out.println(name + " clicked");
-                switch (name) {
-                    case "Home":
-                        new Home(window);
-                        break;
-                    case "All Accounts":
-                        new AllAccounts(window);
-                        break;
-                    case "Budget":
-                        break;
-                    case "Reports":
-                        break;
-                }
-            }
-        });
     }
 
     private void addTopMenu() {
