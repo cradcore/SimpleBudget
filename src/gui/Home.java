@@ -2,9 +2,9 @@ package gui;
 
 import net.miginfocom.layout.CC;
 import net.miginfocom.swing.*;
+
 import javax.swing.*;
-import java.awt.Font;
-import java.awt.Image;
+import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 
@@ -23,8 +23,7 @@ public class Home {
     private void initialize() {
         window.setTitle("Simple Budget");
 
-        MigLayout layout = new MigLayout("gap rel 0", "grow");
-        JPanel panel = new JPanel(layout);
+        JPanel panel = new JPanel(new MigLayout("gap rel 0", "grow"));
         window.setContentPane(panel);
 
         addTitle(panel);
@@ -68,6 +67,7 @@ public class Home {
             @Override
             public void mouseClicked(MouseEvent arg0) {
                 System.out.println("Budget clicked");
+                new Budget(window);
             }
         });
         panel.add(b2, "id b1, alignx center");
@@ -87,4 +87,72 @@ public class Home {
         });
     }
 
+    protected static void addTitle(JFrame window, String title) {
+        JPanel panel = new JPanel(new MigLayout("fill, insets 0, gap rel 0", "grow"));
+        panel.setName("JPanel - Title");
+        panel.setBackground(new Color(0, 0, 0, 0));
+
+        JLabel titleLabel = new JLabel(title);
+        titleLabel.setFont(new Font("Lato", Font.BOLD, 60));
+        panel.add(titleLabel, "align center");
+        panel.setVisible(true);
+        window.add(panel, "dock north");
+    }
+
+    protected static void addSideMenu(JFrame window, String page) {
+        JPanel panel = new JPanel(new MigLayout("fill, insets 0, gap rel 0", "grow"));
+        panel.setName("JPanel - Side Menu");
+        panel.setBackground(Color.decode("#8faadc"));
+        panel.setVisible(true);
+
+        sideMenuAddButton(window, panel, "Home", 1, 130);
+        if (page.equals("All Accounts"))
+            sideMenuAddButton(window, panel, "All Accounts", 2, 100);
+        else sideMenuAddButton(window, panel, "All Accounts", 5, 100);
+        if (page.equals("Budget"))
+            sideMenuAddButton(window, panel, "Budget", 6, 100);
+        else sideMenuAddButton(window, panel, "Budget", 3, 100);
+        sideMenuAddButton(window, panel, "Reports", 4, 800);
+
+        window.add(panel, "dock west");
+    }
+
+    protected static void sideMenuAddButton(JFrame window, JPanel panel, String name, int image, int height) {
+        Insets margins = new Insets(0, 0, 0, 0);
+        JButton button = new JButton();
+        button.setName(name);
+        button.setMargin(margins);
+        button.setIcon(new ImageIcon(new ImageIcon("resources/side_menu_" + image + ".png").getImage().getScaledInstance(330, height, Image.SCALE_DEFAULT)));
+        button.setBorderPainted(false);
+        button.setBorder(null);
+        button.setContentAreaFilled(false);
+        button.setFont(new Font("Lato", Font.BOLD, 60));
+        panel.add(button, "wrap");
+
+        sideMenuAddButtonListener(window, button);
+    }
+
+    protected static void sideMenuAddButtonListener(JFrame window, JButton button) {
+        String name = button.getName();
+
+        button.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent arg0) {
+                System.out.println(name + " clicked");
+                switch (name) {
+                    case "Home":
+                        new Home(window);
+                        break;
+                    case "All Accounts":
+                        new AllAccounts(window);
+                        break;
+                    case "Budget":
+                        new Budget(window);
+                        break;
+                    case "Reports":
+                        break;
+                }
+            }
+        });
+    }
 }

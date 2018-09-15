@@ -1,7 +1,9 @@
 package gui;
 
+import net.miginfocom.swing.MigLayout;
+
 import java.awt.EventQueue;
-import javax.swing.JFrame;
+import javax.swing.*;
 
 public class Run {
 
@@ -10,11 +12,13 @@ public class Run {
         JFrame window = new JFrame();
         window.setBounds(100, 100, 1600, 900);
         window.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        window.setContentPane(new JPanel(new MigLayout("gap rel 0", "grow")));
+        window.getContentPane().setName("Home content pane");
 
         EventQueue.invokeLater(new Runnable() {
             public void run() {
                 try {
-                    new AllAccounts(window);
+                    new Budget(window);
                 } catch (Exception e) {e.printStackTrace();}
             }
         });
