@@ -2,6 +2,7 @@ package gui;
 
 import net.miginfocom.layout.CC;
 import net.miginfocom.swing.*;
+import sqlConnector.SQLConnector;
 
 import javax.swing.*;
 import java.awt.*;
@@ -11,10 +12,11 @@ import java.awt.event.MouseEvent;
 public class Home {
 
     private JFrame window;
-
+    private SQLConnector sql;
     // Create the application.
-    public Home(JFrame window) {
+    public Home(JFrame window, SQLConnector sql) {
         this.window = window;
+        this.sql = sql;
         initialize();
         window.setVisible(true);
     }
@@ -53,7 +55,7 @@ public class Home {
             @Override
             public void mouseClicked(MouseEvent arg0) {
                 System.out.println("All Accounts clicked");
-                new AllAccounts(window);
+                new AllAccounts(window, sql);
             }
         });
 
@@ -67,7 +69,7 @@ public class Home {
             @Override
             public void mouseClicked(MouseEvent arg0) {
                 System.out.println("Budget clicked");
-                new Budget(window);
+                new Budget(window, sql);
             }
         });
         panel.add(b2, "id b1, alignx center");
@@ -93,31 +95,32 @@ public class Home {
         panel.setBackground(new Color(0, 0, 0, 0));
 
         JLabel titleLabel = new JLabel(title);
+        titleLabel.setName("Title");
         titleLabel.setFont(new Font("Lato", Font.BOLD, 60));
         panel.add(titleLabel, "align center");
         panel.setVisible(true);
         window.add(panel, "dock north");
     }
 
-    protected static void addSideMenu(JFrame window, String page) {
+    protected static void addSideMenu(JFrame window, String page, SQLConnector sql) {
         JPanel panel = new JPanel(new MigLayout("fill, insets 0, gap rel 0", "grow"));
         panel.setName("JPanel - Side Menu");
         panel.setBackground(Color.decode("#8faadc"));
         panel.setVisible(true);
 
-        sideMenuAddButton(window, panel, "Home", 1, 130);
+        sideMenuAddButton(window, panel, "Home", 1, 130, sql);
         if (page.equals("All Accounts"))
-            sideMenuAddButton(window, panel, "All Accounts", 2, 100);
-        else sideMenuAddButton(window, panel, "All Accounts", 5, 100);
+            sideMenuAddButton(window, panel, "All Accounts", 2, 100, sql);
+        else sideMenuAddButton(window, panel, "All Accounts", 5, 100, sql);
         if (page.equals("Budget"))
-            sideMenuAddButton(window, panel, "Budget", 6, 100);
-        else sideMenuAddButton(window, panel, "Budget", 3, 100);
-        sideMenuAddButton(window, panel, "Reports", 4, 800);
+            sideMenuAddButton(window, panel, "Budget", 6, 100, sql);
+        else sideMenuAddButton(window, panel, "Budget", 3, 100, sql);
+        sideMenuAddButton(window, panel, "Reports", 4, 800, sql);
 
         window.add(panel, "dock west");
     }
 
-    protected static void sideMenuAddButton(JFrame window, JPanel panel, String name, int image, int height) {
+    protected static void sideMenuAddButton(JFrame window, JPanel panel, String name, int image, int height, SQLConnector sql) {
         Insets margins = new Insets(0, 0, 0, 0);
         JButton button = new JButton();
         button.setName(name);
@@ -129,10 +132,10 @@ public class Home {
         button.setFont(new Font("Lato", Font.BOLD, 60));
         panel.add(button, "wrap");
 
-        sideMenuAddButtonListener(window, button);
+        sideMenuAddButtonListener(window, button, sql);
     }
 
-    protected static void sideMenuAddButtonListener(JFrame window, JButton button) {
+    protected static void sideMenuAddButtonListener(JFrame window, JButton button, SQLConnector sql) {
         String name = button.getName();
 
         button.addMouseListener(new MouseAdapter() {
@@ -141,13 +144,13 @@ public class Home {
                 System.out.println(name + " clicked");
                 switch (name) {
                     case "Home":
-                        new Home(window);
+                        new Home(window, sql);
                         break;
                     case "All Accounts":
-                        new AllAccounts(window);
+                        new AllAccounts(window, sql);
                         break;
                     case "Budget":
-                        new Budget(window);
+                        new Budget(window, sql);
                         break;
                     case "Reports":
                         break;
