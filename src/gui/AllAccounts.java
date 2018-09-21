@@ -6,11 +6,13 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableCellRenderer;
+
 import com.github.lgooddatepicker.components.DatePicker;
 import com.github.lgooddatepicker.components.DatePickerSettings;
 import net.miginfocom.layout.CC;
 import net.miginfocom.swing.*;
 import sqlConnector.SQLConnector;
+
 import java.sql.ResultSet;
 import java.text.NumberFormat;
 import java.time.LocalDate;
@@ -21,10 +23,12 @@ import java.util.Objects;
 class AllAccounts {
 
     private JFrame window;
+    private SQLConnector sql;
 
     // Constructor
-    AllAccounts(JFrame window) {
+    AllAccounts(JFrame window, SQLConnector sql) {
         this.window = window;
+        this.sql = sql;
         initialize();
         window.setVisible(true);
     }
@@ -39,7 +43,7 @@ class AllAccounts {
         window.getContentPane().revalidate();
         window.getContentPane().repaint();
 
-        Home.addSideMenu(window, "All Accounts");
+        Home.addSideMenu(window, "All Accounts", sql);
         Home.addTitle(window, "All Accounts:");
         addTopMenu();
         addNewTransaction();
@@ -57,7 +61,7 @@ class AllAccounts {
 
         JButton viewAccountButton = new JButton();
 
-        ResultSet rs = SQLConnector.select("SELECT DISTINCT accountName FROM Entry");
+        ResultSet rs = sql.select("SELECT DISTINCT accountName FROM Entry");
         ArrayList<String> categories = new ArrayList<>();
         categories.add("All Accounts");
         try {
@@ -195,13 +199,20 @@ class AllAccounts {
         ((JTextField) comp[6]).setText(row.get(5));
         ((JTextField) comp[7]).setText(row.get(6));
         String[] date = comp[2].toString().split("-");
+        String out = ((JTextField) comp[6]).getText();
+        String in = ((JTextField) comp[7]).getText();
+        for (int i = 0; i < out.length(); i++)
+            if (out.charAt(i) == ',')
+                out = out.substring(0, i) + out.substring(i + 1, out.length() - 1);
+        for (int i = 0; i < in.length(); i++)
+            if (in.charAt(i) == ',')
+                in = in.substring(0, i) + in.substring(i + 1, in.length() - 1);
 
         String select = "SELECT * FROM Entry WHERE accountName = '" + ((JTextField) comp[1]).getText() +
                 "' AND dateDay = " + date[2] + " AND dateMonth = " + date[1] + " AND dateYear = " + date[0] +
-                " AND outflow = " + ((JTextField) comp[6]).getText().substring(1) + " AND inflow = " +
-                ((JTextField) comp[7]).getText().substring(1);
+                " AND outflow = " + out.substring(1) + " AND inflow = " + in.substring(1);
 
-        ResultSet rs = SQLConnector.select(select);
+        ResultSet rs = sql.select(select);
         String entryID = null;
         try {
             Objects.requireNonNull(rs).next();
@@ -233,13 +244,11 @@ class AllAccounts {
 
     private void addTable() {
         JPanel panel = new JPanel(new BorderLayout());
-
-
         panel.setBackground(new Color(0, 0, 0, 0));
         panel.setName("JPanel - Table");
 
         String[] headings = {"Account", "Date", "Payee", "Category", "Memo", "Outflow", "Inflow"};
-        String[][] data = getTableData(SQLConnector.select("SELECT * FROM Entry"));
+        String[][] data = getTableData(sql.select("SELECT * FROM Entry"));
 
         JTable jt = new JTable(data, headings) {
             @Override
@@ -255,7 +264,6 @@ class AllAccounts {
             }
         };
         jt.setName("JTable");
-//        jt.setDefaultRenderer(Object.class, new DefaultTableCellRenderer());
         jt.setModel(new DefaultTableModel(data, headings) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -313,7 +321,7 @@ class AllAccounts {
     }
 
     private void addAccountDropdown(JPanel panel) {
-        ResultSet rs = SQLConnector.select("SELECT DISTINCT accountName FROM Entry");
+        ResultSet rs = sql.select("SELECT DISTINCT accountName FROM Entry");
         ArrayList<String> categories = new ArrayList<>();
         try {
             while (Objects.requireNonNull(rs).next())
@@ -470,8 +478,6 @@ class AllAccounts {
             data[5] = data[5].substring(1);
         if (data[6].charAt(0) == '$')
             data[6] = data[6].substring(1);
-
-
         if (data[4].equals("Memo"))
             data[4] = "";
 
@@ -494,18 +500,30 @@ class AllAccounts {
                     if (cc.getName().equals("New Transaction - Entry ID"))
                         entryID = ((JLabel) cc).getText();
 
+        String catID = "ERROR";
+        try {
+            String command = "SELECT * FROM MonthBudget WHERE childName = '" + data[3] + "' AND " +
+                    "dateYear = " + d[0] + " AND dateMonth = " + d[1];
+            ResultSet rs = sql.select(command);
+            if (rs.next())
+                catID = rs.getString("catID");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         if (checkIfEdit(entryID)) {
-            SQLConnector.update("UPDATE Entry SET accountName = '" + data[0] + "',  dateDay = " + d[2] +
-                    ", dateMonth = " + d[1] + ", dateYear = " + d[0] + ", payee = '" + data[2] + "', childCategory = '" +
-                    data[3] + "', memo = '" + data[4] + "', outflow = " + data[5] + ", inflow = " + data[6] + " WHERE entryID = " +
-                    entryID);
-        } else SQLConnector.update("INSERT INTO `simpleBudget`.`Entry` (`entryID`, `accountName`, `dateDay`, " +
-                "`dateMonth`, `dateYear`, `payee`, `childCategory`, `memo`, `outflow`, `inflow`) VALUES ('" +
+            String command = "UPDATE Entry SET accountName = '" + data[0] + "',  dateDay = " + d[2] +
+                    ", dateMonth = " + d[1] + ", dateYear = " + d[0] + ", payee = '" + data[2] + "', catID = '" +
+                    catID + "', memo = '" + data[4] + "', outflow = " + data[5] + ", inflow = " + data[6] + " WHERE entryID = " +
+                    entryID;
+            sql.update(command);
+            System.out.println(command);
+        } else sql.update("INSERT INTO `simpleBudget`.`Entry` (`entryID`, `accountName`, `dateDay`, " +
+                "`dateMonth`, `dateYear`, `payee`, `catID`, `memo`, `outflow`, `inflow`) VALUES ('" +
                 getEntryID() + "', '" + data[0] + "', " + Integer.parseInt(d[2]) + ", " + Integer.parseInt(d[1]) +
-                ", " + Integer.parseInt(d[0]) + ", '" + data[2] + "', '" + data[3] + "', '" + data[4] + "', " +
+                ", " + Integer.parseInt(d[0]) + ", '" + data[2] + "', '" + catID + "', '" + data[4] + "', " +
                 data[5] + ", " + data[6] + ")");
 
-        String[][] tableData = getTableData(SQLConnector.select("SELECT * FROM Entry"));
+        String[][] tableData = getTableData(sql.select("SELECT * FROM Entry"));
         String[] headings = {"Account", "Date", "Payee", "Category", "Memo", "Outflow", "Inflow"};
 
         for (Component c : window.getContentPane().getComponents()) {
@@ -522,19 +540,17 @@ class AllAccounts {
                     }
                     if (ccName.equals("New Transaction - Account"))
                         cc.setVisible(false);
-
                 }
             c.repaint();
             c.validate();
         }
-
         return true;
     }
 
     private boolean checkIfEdit(String entryID) {
-        ResultSet rs = SQLConnector.select("SELECT * FROM Entry WHERE entryID = '" + entryID + "'");
+        ResultSet rs = sql.select("SELECT * FROM Entry WHERE entryID = '" + entryID + "'");
         try {
-            while (rs.next())
+            if (rs.next())
                 return true;
         } catch (Exception e) {
             e.printStackTrace();
@@ -546,18 +562,15 @@ class AllAccounts {
         if (data[0].equals("Account") || data[1].equals("Date") || data[2].equals("Payee") || data[3].equals("Category")
                 || data[5].equals("Outflow") || data[6].equals("Inflow"))
             return false;
-
         return true;
     }
 
     private String getEntryID() {
         String ret = "";
-
         for (int i = 0; i < 6; i++)
             ret += (int) (Math.random() * 10) + "";
-
         try {
-            ResultSet rs = SQLConnector.select("SELECT * FROM Entry");
+            ResultSet rs = sql.select("SELECT * FROM Entry");
             while (rs.next()) {
                 String id = rs.getString("entryID");
                 if (id.equals(ret)) {
@@ -567,7 +580,6 @@ class AllAccounts {
         } catch (Exception e) {
             e.printStackTrace();
         }
-
         return ret;
     }
 
@@ -580,7 +592,10 @@ class AllAccounts {
                 entry.add(rs.getString("dateMonth") + "/" + rs.getString("dateDay")
                         + "/" + rs.getString("dateYear"));
                 entry.add(rs.getString("payee"));
-                entry.add(rs.getString("childCategory"));
+                String catID = rs.getString("catID");
+                ResultSet rs2 = new SQLConnector().select("SELECT * FROM MonthBudget WHERE catID = '" + catID + "'");
+                if (rs2.next())
+                    entry.add(rs2.getString("childName"));
                 entry.add(rs.getString("memo"));
                 entry.add(rs.getString("outflow"));
                 entry.add(rs.getString("inflow"));
@@ -603,18 +618,16 @@ class AllAccounts {
                     else
                         data[i][j] = nf.format(Double.parseDouble(entries.get(i).get(j)));
                 } else data[i][j] = entries.get(i).get(j);
-
         return data;
     }
 
     private void viewOneAccount(String accountName) {
         String[][] tableData;
         if (accountName.equals("All Accounts"))
-            tableData = getTableData(SQLConnector.select("SELECT * FROM Entry"));
+            tableData = getTableData(sql.select("SELECT * FROM Entry"));
         else
-            tableData = getTableData(SQLConnector.select("SELECT * FROM Entry WHERE accountName = '" + accountName + "'"));
+            tableData = getTableData(sql.select("SELECT * FROM Entry WHERE accountName = '" + accountName + "'"));
         String[] headings = {"Account", "Date", "Payee", "Category", "Memo", "Outflow", "Inflow"};
-
         for (Component c : window.getContentPane().getComponents())
             if (c.getName().equals("JPanel - Table"))
                 ((DefaultTableModel) ((JTable) ((((JScrollPane) ((JPanel) c).getComponent(0)).getViewport()).getView())).getModel()).setDataVector(tableData, headings);

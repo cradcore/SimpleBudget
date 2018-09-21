@@ -5,19 +5,22 @@ import java.sql.*;
 public class SQLConnector {
 
     // Class variables
-    private static String sqlURL = "jdbc:mysql://192.168.0.222:3306/simpleBudget";
-    private static String[] userPass = {"root", "s3rver"};
+    private String sqlURL = "jdbc:mysql://192.168.0.222:3306/simpleBudget";
+    private String[] userPass = {"root", "s3rver"};
+    private Statement stmnt;
 
-    private static Statement connect() {
+    public SQLConnector() {
+        connect();
+    }
+
+    private Statement connect() {
         Connection con = null;
         try {
-            Statement stmnt;
-            ResultSet rs;
 
             // Register the JDBC driver for MySQL
             Class.forName("com.mysql.jdbc.Driver");
 
-            // Define URL of database server for 'cradcore' on the faure
+            // Define URL of database server for 'cradcore'
             String url = sqlURL;
 
             // Get a connection to the database for cradcore
@@ -34,19 +37,20 @@ public class SQLConnector {
         return null;
     }
 
-    public static ResultSet select(String command) {
+    public ResultSet select(String command) {
         try {
-            return connect().executeQuery(command);
+            return stmnt.executeQuery(command);
         }
         catch(Exception e) {
             e.printStackTrace();
+            System.out.println(command);
         }
         return null;
     }
 
-    public static int update(String command) {
+    public int update(String command) {
         try {
-            return connect().executeUpdate(command);
+            return stmnt.executeUpdate(command);
         }
         catch(Exception e) {
             e.printStackTrace();
