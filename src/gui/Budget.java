@@ -1,20 +1,23 @@
 package gui;
 
-
 import net.miginfocom.swing.MigLayout;
 import sqlConnector.SQLConnector;
 
 import javax.swing.*;
+import javax.swing.border.Border;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableCellRenderer;
 import java.awt.*;
+import java.awt.event.FocusEvent;
+import java.awt.event.FocusListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.sql.Array;
 import java.sql.ResultSet;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoField;
-import java.time.temporal.TemporalAccessor;
 import java.util.ArrayList;
 
 class Budget {
@@ -47,6 +50,7 @@ class Budget {
         Home.addTitle(window, "Budget:");
         addTopMenu();
         addTable();
+        listComponents();
     }
 
     private void addTopMenu() {
@@ -116,8 +120,14 @@ class Budget {
                 public void mouseClicked(MouseEvent arg0) {
                     resetMonthColors(panel);
                     month.setBackground(Color.decode("#345998"));
-//                    System.out.println(getDate()[0] + "-" + getDate()[1]);
-                    addTable();
+                    String[] headings = {"Category", "Budgeted", "Activity", "Available"};
+                    for (Component c : window.getContentPane().getComponents())
+                        if (c.getName().equals("JPanel - Table")) {
+                            JTable jt = ((JTable) ((((JScrollPane) ((JPanel) c).getComponent(0)).getViewport()).getView()));
+                            ((DefaultTableModel) jt.getModel()).setDataVector(getTableData(), headings);
+                            jt.getColumnModel().getColumn(0).setPreferredWidth(jt.getColumnModel().getTotalColumnWidth() * 2);
+
+                        }
                 }
             });
             panel.add(month, "al center center, height 50");
@@ -140,7 +150,34 @@ class Budget {
         String[] headings = {"Category", "Budgeted", "Activity", "Available"};
         String[][] data = getTableData();
 
-        JTable jt = new JTable(data, headings);
+        JTable jt = formatAndFillTable(data, headings);
+        JScrollPane jsp = new JScrollPane(jt);
+        jsp.setName("Scroll Pane");
+
+        panel.add(jsp, BorderLayout.CENTER);
+        window.add(panel, "dock west, w 100%, h 100%, span, wrap");
+
+        addTableOptions();
+    }
+
+    private JTable formatAndFillTable(String[][] data, String[] headings) {
+        JTable jt = new JTable(data, headings) {
+            @Override
+            public Component prepareRenderer(TableCellRenderer renderer, int row, int column) {
+                Component comp = super.prepareRenderer(renderer, row, column);
+
+                comp.setBackground(isParentRow(data, row) ? Color.decode("#c6d3eb") : Color.decode("#ecf0f8"));
+                comp.setFont(column > 0 ? new Font("Lato", Font.PLAIN, 18) : isParentRow(data, row) ? new Font("Lato", Font.BOLD, 22) : new Font("Lato", Font.PLAIN, 21));
+                this.setRowHeight(row, isParentRow(data, row) ? 40 : 30);
+
+                if (isRowSelected(row))
+                    comp.setBackground(Color.decode("#7b99d1"));
+
+                return comp;
+            }
+
+
+        };
         jt.setModel(new DefaultTableModel(data, headings) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -148,25 +185,62 @@ class Budget {
             }
         });
         jt.setName("JTable");
-        jt.getTableHeader().setFont(new Font("Lato", Font.BOLD, 17));
-        jt.setFont(new Font("Lato", Font.PLAIN, 17));
+        jt.getTableHeader().setFont(new Font("Lato", Font.BOLD, 23));
         jt.setFillsViewportHeight(true);
-        jt.setRowHeight(25);
+        jt.setRowHeight(40);
+        jt.setGridColor(Color.decode("#c6d3eb"));
+        jt.setIntercellSpacing(new Dimension(0, 1));
+        jt.getColumnModel().getColumn(0).setPreferredWidth(jt.getColumnModel().getTotalColumnWidth() * 2);
+        jt.getSelectionModel().addListSelectionListener(new ListSelectionListener() {
+            @Override
+            public void valueChanged(ListSelectionEvent e) {
+                if (e.getValueIsAdjusting()) {
+                    JPanel tableOptions = null;
+                    for(Component c : window.getContentPane().getComponents())
+                        if(c.getName().equals("JPanel - Table options"))
+                            tableOptions = ((JPanel) c);
+                    for(Component c : window.getContentPane().getComponents())
+                        if(c.getName().equals("JPanel - Table"))
+                            if(isParentRow(data, ((JTable) ((((JScrollPane) ((JPanel) c).getComponent(0)).getViewport()).getView())).getSelectedRow()))
+                                tableOptions.setVisible(false);
+                            else tableOptions.setVisible(true);
+                }
+            }
+        });
+        jt.addFocusListener(new FocusListener() {
+            @Override
+            public void focusGained(FocusEvent e) {
 
-        JScrollPane jsp = new JScrollPane(jt);
-        jsp.setName("Scroll Pane");
+            }
 
-        panel.add(jsp, BorderLayout.CENTER);
+            @Override
+            public void focusLost(FocusEvent e) {
+                for(Component c : window.getContentPane().getComponents())
+                    if(c.getName().equals("JPanel - Table options"))
+                        c.setVisible(false);
+            }
+        });
 
-        window.add(panel, "dock north, w 100%, h 100%, span, wrap");
+        return jt;
+    }
 
+    private void addTableOptions() {
+        JPanel panel = new JPanel(new MigLayout("fill", "grow", ""));
+        panel.setVisible(false);
+        panel.setName("JPanel - Table options");
+        panel.setBackground(Color.decode("#8faadc"));
+        for (int i = 1; i < 4; i++) {
+            JLabel l = new JLabel();
+            l.setIcon(new ImageIcon(new ImageIcon("resources/budget-side_menu_" + i + ".png").getImage().getScaledInstance(250, 50, Image.SCALE_DEFAULT)));
+            l.setName("Option " + i);
+            panel.add(l, "dock north");
+        }
 
-//        System.out.println("\n\n" + getDate()[0] + "/" + getDate()[1]);
-//        for (int i = 0; i < data.length; i++) {
-//            for (int j = 0; j < data[i].length; j++)
-//                System.out.print(data[i][j] + "\t");
-//            System.out.println();
-//        }
+        window.add(panel, "dock west, hidemode 3");
+    }
+
+    private boolean isParentRow(String[][] data, int row) {
+        return data[row][0].charAt(0) != ' ';
     }
 
     private String[][] getTableData() {
@@ -179,12 +253,19 @@ class Budget {
         String[][] ret = new String[data.size()][data.get(0).size()];
         for (int i = 0; i < data.size(); i++)
             for (int j = 0; j < data.get(i).size(); j++) {
-                if (j == 0)
-                    ret[i][j] = data.get(i).get(j);
-                else {
-                    if(data.get(i).get(j).charAt(0) == '-')
+                if (j == 0) {
+                    if (data.get(i).get(j).charAt(0) == '\t')
+                        ret[i][j] = "        " + data.get(i).get(j).substring(1);
+                    else ret[i][j] = data.get(i).get(j);
+                } else {
+                    if (data.get(i).get(j).charAt(0) == '-')
                         ret[i][j] = data.get(i).get(j).charAt(0) + "$" + data.get(i).get(j).substring(1);
                     else ret[i][j] = "$" + data.get(i).get(j);
+                    int pI = ret[i][j].indexOf('.');
+                    if (pI == -1)
+                        ret[i][j] += ".00";
+                    else if (ret[i][j].length() - 1 - pI < 2)
+                        ret[i][j] += "0";
                 }
             }
         return ret;
@@ -209,7 +290,7 @@ class Budget {
     private ArrayList<ArrayList<String>> getCategoryAndBudget(int month, int year) {
         ArrayList<ArrayList<String>> data = new ArrayList<>();
         ResultSet rs = sql.select("SELECT * FROM MonthBudget WHERE dateMonth = " + month +
-                " AND dateYear = " + year + " ORDER BY parentName");
+                " AND dateYear = " + year + " ORDER BY parentName, childName");
         try {
             String oldParCat = "";
             while (rs.next()) {
