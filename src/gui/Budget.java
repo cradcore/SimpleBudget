@@ -4,21 +4,19 @@ import net.miginfocom.swing.MigLayout;
 import sqlConnector.SQLConnector;
 
 import javax.swing.*;
-import javax.swing.border.Border;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableCellRenderer;
+import javax.swing.table.TableModel;
 import java.awt.*;
-import java.awt.event.FocusEvent;
-import java.awt.event.FocusListener;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
+import java.awt.event.*;
 import java.sql.ResultSet;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoField;
 import java.util.ArrayList;
+import java.util.regex.Pattern;
 
 class Budget {
 
@@ -50,7 +48,6 @@ class Budget {
         Home.addTitle(window, "Budget:");
         addTopMenu();
         addTable();
-        listComponents();
     }
 
     private void addTopMenu() {
@@ -120,11 +117,13 @@ class Budget {
                 public void mouseClicked(MouseEvent arg0) {
                     resetMonthColors(panel);
                     month.setBackground(Color.decode("#345998"));
-                    String[] headings = {"Category", "Budgeted", "Activity", "Available"};
                     for (Component c : window.getContentPane().getComponents())
                         if (c.getName().equals("JPanel - Table")) {
                             JTable jt = ((JTable) ((((JScrollPane) ((JPanel) c).getComponent(0)).getViewport()).getView()));
-                            ((DefaultTableModel) jt.getModel()).setDataVector(getTableData(), headings);
+                            DefaultTableModel dtm = ((DefaultTableModel) jt.getModel());
+                            String[][] data = getTableData();
+                            String[] headings = {"Category", "Budgeted", "Activity", "Available"};
+                            dtm.setDataVector(data, headings);
                             jt.getColumnModel().getColumn(0).setPreferredWidth(jt.getColumnModel().getTotalColumnWidth() * 2);
 
                         }
@@ -196,28 +195,23 @@ class Budget {
             public void valueChanged(ListSelectionEvent e) {
                 if (e.getValueIsAdjusting()) {
                     JPanel tableOptions = null;
-                    for(Component c : window.getContentPane().getComponents())
-                        if(c.getName().equals("JPanel - Table options"))
+                    for (Component c : window.getContentPane().getComponents())
+                        if (c.getName().equals("JPanel - Table options"))
                             tableOptions = ((JPanel) c);
-                    for(Component c : window.getContentPane().getComponents())
-                        if(c.getName().equals("JPanel - Table"))
-                            if(isParentRow(data, ((JTable) ((((JScrollPane) ((JPanel) c).getComponent(0)).getViewport()).getView())).getSelectedRow()))
-                                tableOptions.setVisible(false);
-                            else tableOptions.setVisible(true);
+                    for (Component c : window.getContentPane().getComponents())
+                        if (c.getName().equals("JPanel - Table")) {
+                            int row = ((JTable) ((((JScrollPane) ((JPanel) c).getComponent(0)).getViewport()).getView())).getSelectedRow();
+                            if (row == -1)
+                                return;
+                            if (isParentRow(data, row)) {
+                                tableOptions.getComponent(1).setVisible(false);
+                                tableOptions.getComponent(2).setVisible(false);
+                            } else {
+                                tableOptions.getComponent(1).setVisible(true);
+                                tableOptions.getComponent(2).setVisible(true);
+                            }
+                        }
                 }
-            }
-        });
-        jt.addFocusListener(new FocusListener() {
-            @Override
-            public void focusGained(FocusEvent e) {
-
-            }
-
-            @Override
-            public void focusLost(FocusEvent e) {
-                for(Component c : window.getContentPane().getComponents())
-                    if(c.getName().equals("JPanel - Table options"))
-                        c.setVisible(false);
             }
         });
 
@@ -226,20 +220,592 @@ class Budget {
 
     private void addTableOptions() {
         JPanel panel = new JPanel(new MigLayout("fill", "grow", ""));
-        panel.setVisible(false);
         panel.setName("JPanel - Table options");
         panel.setBackground(Color.decode("#8faadc"));
         for (int i = 1; i < 4; i++) {
             JLabel l = new JLabel();
+            if (i != 1)
+                l.setVisible(false);
             l.setIcon(new ImageIcon(new ImageIcon("resources/budget-side_menu_" + i + ".png").getImage().getScaledInstance(250, 50, Image.SCALE_DEFAULT)));
             l.setName("Option " + i);
+            l.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseClicked(MouseEvent e) {
+                    JTable table = null;
+                    for (Component c : window.getContentPane().getComponents()) {
+                        if (c.getName().equals("JPanel - Table"))
+                            table = ((JTable) ((((JScrollPane) ((JPanel) c).getComponent(0)).getViewport()).getView()));
+                        if (c.getName().equals("JPanel - Table options"))
+                            c.setVisible(false);
+                    }
+
+                    switch (l.getName().charAt(7)) {
+                        case '1':
+                            addCategory(table);
+                            break;
+                        case '2':
+                            removeCategory(table);
+                            break;
+                        case '3':
+                            editCategory(table);
+                            break;
+                    }
+                }
+            });
             panel.add(l, "dock north");
         }
+        window.add(panel, "dock west, hidemode 3");
+        addCategoryOptions();
+    }
+
+    private void addCategoryOptions() {
+        addCategoryOption1();
+        addCategoryOption2();
+        addCategoryOption3();
+    }
+
+    private void addCategoryOption1() {
+        JPanel panel = new JPanel(new MigLayout("fill, insets 0, gap rel 0", "grow"));
+        panel.setName("JPanel - Add category");
+        panel.setVisible(false);
+        panel.setBackground(Color.decode("#8faadc"));
+
+        addCategoryOption1Labels(panel, "Add icon", "resources/budget-side_menu_1.png", true, 250, 50, 0, "dock north");
+        addCategoryOption1Labels(panel, "Instructions", "<html><center><br><hr>Please fill in the following info to add a new category<hr><br><br></center></html>",
+                false, 0, 0, 20, "dock north");
+        addCategoryOption1Labels(panel, "Parent category", "Parent category:", false, 0, 0, 18, "dock north");
+
+        ArrayList<String> parentCats = new ArrayList<>();
+        int[] d = getDate();
+        ResultSet rs = sql.select("SELECT DISTINCT parentName FROM MonthBudget WHERE dateMonth = " + d[0] + " AND dateYear = " + d[1] + ";");
+        try {
+            while (rs.next())
+                parentCats.add(rs.getString("parentName"));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        parentCats.add("<Add new parent category>");
+        JComboBox<String> jc = new JComboBox<>(parentCats.toArray(new String[0]));
+        jc.setFont(new Font("Lato", Font.PLAIN, 18));
+        jc.setName("JComboBox - Parent categories");
+        jc.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (jc.getSelectedItem().toString().equals("<Add new parent category>"))
+                    for (Component c : panel.getComponents()) {
+                        if (c.getName().equals("JComboBox - Parent categories"))
+                            c.setVisible(false);
+                        if (c.getName().equals("JTextField - Parent category")) {
+                            c.setVisible(true);
+                            ((JTextField) c).setText("");
+                        }
+                    }
+            }
+        });
+        panel.add(jc, "dock north, hidemode 3");
+
+        JTextField jtf3 = new JTextField();
+        jtf3.setFont(new Font("Lato", Font.PLAIN, 18));
+        jtf3.setForeground(Color.BLACK);
+        jtf3.setName("JTextField - Parent category");
+        jtf3.setVisible(false);
+        panel.add(jtf3, "dock north, hidemode 3");
+
+        addCategoryOption1Labels(panel, "Child categories", "<html><br>Child category:</html>", false, 0, 0, 18, "dock north");
+
+        JTextField jtf1 = new JTextField();
+        jtf1.setFont(new Font("Lato", Font.PLAIN, 18));
+        jtf1.setForeground(Color.BLACK);
+        jtf1.setName("JTextField - Child categories");
+        panel.add(jtf1, "dock north");
+
+        addCategoryOption1Labels(panel, "Budgeted", "<html><br>Amount to be budgeted:</html>", false, 0, 0, 18, "dock north");
+
+        JTextField jtf2 = new JTextField();
+        jtf2.setFont(new Font("Lato", Font.PLAIN, 18));
+        jtf2.setForeground(Color.BLACK);
+        jtf2.setName("JTextField - Budgeted");
+        panel.add(jtf2, "dock north");
+
+        addCategoryOption1Labels(panel, "Error", "<html><center>All options must be filled in, and the budget must be a valid number<br><br></center></html>",
+                false, 0, 0, 23, "dock north");
+        JPanel panel2 = new JPanel(new MigLayout("fill"));
+        panel2.setName("Save or cancel icons");
+        addCategoryOption1Labels(panel2, "Save icon", "resources/budget-side_menu-add_1.png", true, 125, 50, 0, "dock west");
+        addCategoryOption1Labels(panel2, "Cancel icon", "resources/budget-side_menu-add_2.png", true, 125, 50, 0, "dock west");
+        panel.add(panel2, "dock north");
 
         window.add(panel, "dock west, hidemode 3");
     }
 
+    private void addCategoryOption1Labels(JPanel panel, String name, String text, boolean icon, int iconWidth, int iconHeight, int fontSize, String constraints) {
+        JLabel l = new JLabel();
+        if (icon)
+            l.setIcon(new ImageIcon(new ImageIcon(text).getImage().getScaledInstance(iconWidth, iconHeight, Image.SCALE_DEFAULT)));
+        else l.setText(text);
+        l.setFont(new Font("Lato", Font.PLAIN, fontSize));
+        l.setForeground(Color.BLACK);
+        l.setHorizontalAlignment(JLabel.CENTER);
+        l.setName(name);
+        panel.add(l, constraints);
+
+        switch (name) {
+            case "Save icon":
+                l.addMouseListener(new MouseAdapter() {
+                    @Override
+                    public void mouseClicked(MouseEvent e) {
+                        saveCategory();
+                    }
+                });
+                break;
+            case "Cancel icon":
+                l.addMouseListener(new MouseAdapter() {
+                    @Override
+                    public void mouseClicked(MouseEvent e) {
+                        for (Component c : window.getContentPane().getComponents()) {
+                            if (c.getName().equals("JPanel - Table options"))
+                                c.setVisible(true);
+                            if (c.getName().equals("JPanel - Add category")) {
+                                c.setVisible(false);
+                                for(Component cc : ((JPanel) c).getComponents()) {
+                                    if (cc.getName().equals("JComboBox - Parent categories")) {
+                                        cc.setVisible(true);
+                                        ((JComboBox<String>) cc).setSelectedIndex(0);
+                                    }
+                                    if (cc.getName().equals("JTextField - Parent category"))
+                                        cc.setVisible(false);
+                                    if(cc.getName().contains("JTextField"))
+                                        ((JTextField) cc).setText("");
+                                }
+                            }
+                        }
+                    }
+                });
+                break;
+            case "Error":
+                l.setForeground(Color.RED);
+                l.setVisible(false);
+        }
+    }
+
+    private void saveCategory() {
+        String parCat = "";
+        String childCat = "";
+        String budgeted = "";
+        for (Component c : window.getContentPane().getComponents()) {
+            if (c.getName().equals("JPanel - Add category")) {
+                for (Component cc : ((JPanel) c).getComponents()) {
+                    if (cc.getName().equals("JComboBox - Parent categories"))
+                        parCat = ((JComboBox<String>) cc).getSelectedItem().toString();
+                    else if (cc.getName().equals("JTextField - Parent category")) {
+                        if (!((JTextField) cc).getText().isEmpty())
+                            parCat = ((JTextField) cc).getText();
+                    } else if (cc.getName().equals("JTextField - Child categories"))
+                        childCat = ((JTextField) cc).getText();
+                    else if (cc.getName().equals("JTextField - Budgeted"))
+                        budgeted = ((JTextField) cc).getText();
+                }
+                break;
+            }
+        }
+        boolean isDouble = true;
+        for (char c : budgeted.toCharArray())
+            if (!Character.isDigit(c) && c != '.')
+                isDouble = false;
+        JLabel error = null;
+        for (Component c : window.getContentPane().getComponents())
+            if (c.getName().equals("JPanel - Add category"))
+                for (Component cc : ((JPanel) c).getComponents()) {
+                    if (cc.getName().equals("Error"))
+                        error = ((JLabel) cc);
+                }
+
+        if (parCat.isEmpty() || childCat.isEmpty() || budgeted.isEmpty() || !isDouble)
+            error.setVisible(true);
+        else {
+            error.setVisible(false);
+            int[] d = getDate();
+            sql.update("INSERT INTO MonthBudget(`catID`, `dateMonth`, `dateYear`, `childName`, `parentName`, `budgeted`) VALUES " +
+                    "('" + getNewCatID() + "', " + d[0] + ", " + d[1] + ", '" + childCat + "', '" + parCat + "', " + budgeted + ");");
+            String[] headings = {"Category", "Budgeted", "Activity", "Available"};
+            for (Component c : window.getContentPane().getComponents()) {
+                if (c.getName().equals("JPanel - Table options"))
+                    c.setVisible(true);
+                if (c.getName().equals("JPanel - Add category")) {
+                    c.setVisible(false);
+                    for(Component cc : ((JPanel) c).getComponents()) {
+                        if (cc.getName().equals("JTextField - Parent category")) {
+                            cc.setVisible(false);
+                            ((JTextField) cc).setText("");
+                        }
+                        if (cc.getName().equals("JComboBox - Parent categories")) {
+                            cc.setVisible(true);
+                            ((JComboBox<String>) cc).setSelectedIndex(0);
+                        }
+                    }
+                }
+                if (c.getName().equals("JPanel - Table"))
+                    new Budget(window, sql);
+            }
+
+        }
+    }
+
+    private void addCategoryOption2() {
+        JPanel panel = new JPanel(new MigLayout("fill", "grow", ""));
+        panel.setName("JPanel - Remove category");
+        panel.setBackground(Color.decode("#8faadc"));
+        panel.setVisible(false);
+
+        JLabel l1 = new JLabel();
+        l1.setIcon(new ImageIcon(new ImageIcon("resources/budget-side_menu_2.png").getImage().getScaledInstance(250, 50, Image.SCALE_DEFAULT)));
+        l1.setName("Remove icon");
+        panel.add(l1, "dock north");
+
+        JLabel l2 = new JLabel("<html><center><br><hr>Are you sure you want to remove this category?<br><hr><br><br></center></html>");
+        l2.setForeground(Color.BLACK);
+        l2.setFont(new Font("Lato", Font.PLAIN, 20));
+        l2.setName("Confirmation message");
+        panel.add(l2, "dock north");
+
+        JPanel panel2 = new JPanel(new MigLayout("fill, insets 0, gap rel 0, hidemode 3", "grow"));
+        panel2.setName("JPanel - Icons");
+        JLabel l3 = new JLabel();
+        l3.setIcon(new ImageIcon(new ImageIcon("resources/budget-side_menu-remove.png").getImage().getScaledInstance(125, 50, Image.SCALE_DEFAULT)));
+        l3.setName("Save icon");
+        panel2.add(l3, "dock west");
+
+        JLabel l4 = new JLabel();
+        l4.setIcon(new ImageIcon(new ImageIcon("resources/budget-side_menu-add_2.png").getImage().getScaledInstance(125, 50, Image.SCALE_DEFAULT)));
+        l4.setName("Cancel icon");
+        l4.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                for (Component c : window.getContentPane().getComponents()) {
+                    if (c.getName().equals("JPanel - Table options"))
+                        c.setVisible(true);
+                    if (c.getName().equals("JPanel - Remove category")) {
+                        c.setVisible(false);
+                        for (Component cc : ((JPanel) c).getComponents())
+                            if (cc.getName().equals("Error"))
+                                cc.setVisible(false);
+
+                    }
+                }
+
+            }
+        });
+        panel2.add(l4, "dock west");
+
+        JLabel l5 = new JLabel();
+        l5.setForeground(Color.RED);
+        l5.setHorizontalAlignment(JLabel.CENTER);
+        l5.setVisible(false);
+        l5.setFont(new Font("Lato", Font.PLAIN, 20));
+        l5.setName("Error");
+        panel.add(l5, "dock north, hidemode 3");
+
+        panel.add(panel2, "dock north, wmin 0");
+
+        l3.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                String catSelected = categoryOption2GetSelected();
+                int numEntries = categoryOption2GetNumEntries(catSelected);
+                if (numEntries != 0) {
+                    l5.setText("<html><center>You must change the<br>category or delete all<br>the entries with " + catSelected +
+                            " as a category. There are " + numEntries + " entries to be edited/deleted.<br><br></center></html>");
+                    l5.setVisible(true);
+                } else {
+                    try {
+                        int[] d = getDate();
+                        ResultSet rs = sql.select("SELECT * FROM MonthBudget WHERE childName = '" + catSelected +
+                                "' AND dateMonth = " + d[0] + " AND dateYear = " + d[1] + ";");
+                        String catID = null;
+                        if (rs.next())
+                            catID = rs.getString("catID");
+                        sql.update("DELETE FROM `simpleBudget`.`MonthBudget` WHERE `catID` LIKE '" + catID + "' ESCAPE '#'");
+
+                    } catch (Exception ee) {
+                        ee.printStackTrace();
+                    }
+                    String[] headings = {"Category", "Budgeted", "Activity", "Available"};
+                    for (Component c : window.getContentPane().getComponents()) {
+                        if (c.getName().equals("JPanel - Table options"))
+                            c.setVisible(true);
+                        if (c.getName().equals("JPanel - Remove category"))
+                            c.setVisible(false);
+                        if (c.getName().equals("JPanel - Table")) {
+                            new Budget(window, sql);
+                        }
+
+                    }
+                }
+            }
+        });
+
+        window.add(panel, "dock west, hidemode 3");
+    }
+
+    private String categoryOption2GetSelected() {
+        for (Component c : window.getContentPane().getComponents())
+            if (c.getName().equals("JPanel - Table")) {
+                JTable t = ((JTable) ((((JScrollPane) ((JPanel) c).getComponent(0)).getViewport()).getView()));
+                String cat = t.getModel().getValueAt(t.getSelectedRow(), 0).toString();
+                while (cat.charAt(0) == ' ')
+                    cat = cat.substring(1);
+                return cat;
+            }
+        return null;
+    }
+
+    private int categoryOption2GetNumEntries(String catName) {
+        int[] d = getDate();
+        int numEntries = 0;
+        ResultSet rs = sql.select("SELECT * FROM Entry e LEFT JOIN MonthBudget b ON e.catID = b.catID WHERE childName = '" +
+                catName + "' AND e.dateMonth = " + d[0] + " AND e.dateYear = " + d[1] + ";");
+        try {
+            while (rs.next())
+                numEntries++;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return numEntries;
+    }
+
+    private void addCategoryOption3() {
+        JPanel panel = new JPanel(new MigLayout("fill", "grow", ""));
+        panel.setName("JPanel - Edit category");
+        panel.setBackground(Color.decode("#8faadc"));
+        panel.setVisible(false);
+
+        JLabel l1 = new JLabel();
+        l1.setName("JLabel - Edit icon");
+        l1.setIcon(new ImageIcon(new ImageIcon("resources/budget-side_menu_3.png").getImage().getScaledInstance(250, 50, Image.SCALE_DEFAULT)));
+        panel.add(l1, "dock north");
+
+        JLabel l2 = new JLabel("<html><br><hr><center>Please edit the following info and click save to edit this category</center><hr><br><br></html>");
+        l2.setName("JLabel - Edit instructions");
+        l2.setFont(new Font("Lato", Font.PLAIN, 20));
+        l2.setForeground(Color.BLACK);
+        panel.add(l2, "dock north");
+
+        JLabel l3 = new JLabel("Parent Category:");
+        l3.setName("JLabel - Parent category");
+        l3.setFont(new Font("Lato", Font.PLAIN, 18));
+        l3.setForeground(Color.BLACK);
+        l3.setHorizontalAlignment(JLabel.CENTER);
+        panel.add(l3, "dock north");
+
+        ArrayList<String> parCat = new ArrayList<>();
+        try {
+            ResultSet rs = sql.select("SELECT DISTINCT parentName FROM MonthBudget");
+            while (rs.next())
+                parCat.add(rs.getString("parentName"));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        parCat.add("<Add new parent category>");
+        JComboBox<String> jcb = new JComboBox<>(parCat.toArray(new String[0]));
+        jcb.setFont(new Font("Lato", Font.PLAIN, 18));
+        jcb.setForeground(Color.BLACK);
+        jcb.setName("JComboBox - Parent category");
+        jcb.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if(jcb.getSelectedItem().toString().equals("<Add new parent category>")) {
+                    for(Component c : panel.getComponents()) {
+                        if(c.getName().equals("JComboBox - Parent category"))
+                            c.setVisible(false);
+                        if(c.getName().equals("JTextField - Parent category"))
+                            c.setVisible(true);
+                    }
+                }
+            }
+        });
+        panel.add(jcb, "dock north, hidemode 3");
+
+        JTextField jtf3 = new JTextField();
+        jtf3.setVisible(false);
+        jtf3.setForeground(Color.BLACK);
+        jtf3.setFont(new Font("Lato", Font.PLAIN, 18));
+        jtf3.setName("JTextField - Parent category");
+        panel.add(jtf3, "dock north, hidemode 3");
+
+        JLabel l4 = new JLabel("<html><br><center>Child category:</center></html>");
+        l4.setFont(new Font("Lato", Font.PLAIN, 18));
+        l4.setForeground(Color.BLACK);
+        l4.setHorizontalAlignment(JLabel.CENTER);
+        l4.setName("JLabel - Child category");
+        panel.add(l4, "dock north");
+
+        JTextField jtf1 = new JTextField();
+        jtf1.setForeground(Color.BLACK);
+        jtf1.setFont(new Font("Lato", Font.PLAIN, 18));
+        jtf1.setName("JTextField - Child category");
+        panel.add(jtf1, "dock north");
+
+        JLabel l5 = new JLabel("<html><br><center>Amount to be budgeted:</center></html>");
+        l5.setFont(new Font("Lato", Font.PLAIN, 18));
+        l5.setForeground(Color.BLACK);
+        l5.setHorizontalAlignment(JLabel.CENTER);
+        l5.setName("JLabel - Budgeted");
+        panel.add(l5, "dock north");
+
+        JTextField jtf2 = new JTextField();
+        jtf2.setForeground(Color.BLACK);
+        jtf2.setFont(new Font("Lato", Font.PLAIN, 18));
+        jtf2.setName("JTextField - Budgeted");
+        panel.add(jtf2, "dock north");
+
+        JLabel error = new JLabel("<html><center>All options must be filled in, and the budget must be a valid number<br><br></center></html>");
+        error.setFont(new Font("Lato", Font.PLAIN, 20));
+        error.setForeground(Color.RED);
+        error.setHorizontalAlignment(JLabel.CENTER);
+        error.setVisible(false);
+        error.setName("JLabel - Error");
+        panel.add(error, "dock north");
+
+        JPanel panel2 = new JPanel(new MigLayout("fill", "grow", ""));
+        panel2.setName("JPanel - Save/cancel");
+
+        JLabel l6 = new JLabel();
+        l6.setIcon(new ImageIcon(new ImageIcon("resources/budget-side_menu-add_1.png").getImage().getScaledInstance(125, 50, Image.SCALE_DEFAULT)));
+        l6.setName("JLabel - Save");
+        l6.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                for (Component c : window.getContentPane().getComponents()) {
+                    if (c.getName().equals("JPanel - Edit category")) {
+                        c.setVisible(false);
+                        saveEditedCategory();
+                    }
+                    if (c.getName().equals("JPanel - Table options"))
+                        c.setVisible(true);
+
+                }
+            }
+        });
+        panel2.add(l6, "dock west");
+
+        JLabel l7 = new JLabel();
+        l7.setIcon(new ImageIcon(new ImageIcon("resources/budget-side_menu-add_2.png").getImage().getScaledInstance(125, 50, Image.SCALE_DEFAULT)));
+        l7.setName("JLabel - Cancel");
+        l7.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                for (Component c : window.getContentPane().getComponents()) {
+                    if (c.getName().equals("JPanel - Table options"))
+                        c.setVisible(true);
+                    if (c.getName().equals("JPanel - Edit category")) {
+                        c.setVisible(false);
+                        for(Component cc : ((JPanel) c).getComponents()) {
+                            if(cc.getName().equals("JComboBox - Parent category"))
+                                cc.setVisible(true);
+                            if(cc.getName().equals("JTextField - Parent category")) {
+                                cc.setVisible(false);
+                                ((JTextField) cc).setText("");
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        panel2.add(l7, "dock west");
+
+        panel.add(panel2, "dock north");
+
+        window.add(panel, "dock west, hidemode 3");
+    }
+
+    private void saveEditedCategory() {
+        String oldChildCat = "",
+                childCat = "",
+                oldParCat = "",
+                parCat = "",
+                oldBudgeted = "",
+                budgeted = "";
+        for (Component c : window.getContentPane().getComponents()) {
+            if (c.getName().equals("JPanel - Table")) {
+                JTable jt = ((JTable) ((((JScrollPane) ((JPanel) c).getComponent(0)).getViewport()).getView()));
+
+                int row = jt.getSelectedRow();
+                oldChildCat = jt.getValueAt(row, 0).toString();
+                while (oldChildCat.charAt(0) == ' ')
+                    oldChildCat = oldChildCat.substring(1);
+                oldBudgeted = jt.getValueAt(row, 1).toString().substring(1);
+                while (jt.getValueAt(row, 0).toString().charAt(0) == ' ')
+                    row--;
+                oldParCat = jt.getValueAt(row, 0).toString();
+            } else if (c.getName().equals("JPanel - Edit category")) {
+                for (Component cc : ((JPanel) c).getComponents()) {
+                    if (cc.getName().equals("JComboBox - Parent category"))
+                        parCat = ((JComboBox<String>) cc).getSelectedItem().toString();
+                    else if (cc.getName().equals("JTextField - Parent category") && !((JTextField) cc).getText().isEmpty())
+                        parCat = ((JTextField) cc).getText();
+                    else if (cc.getName().equals("JTextField - Child category"))
+                        childCat = ((JTextField) cc).getText();
+                    else if (cc.getName().equals("JTextField - Budgeted"))
+                        budgeted = ((JTextField) cc).getText();
+                }
+            }
+        }
+        try {
+            int[] d = getDate();
+            ResultSet rs = sql.select("SELECT catID FROM MonthBudget WHERE dateMonth = " + d[0] + " AND dateYear = " +
+                    d[1] + " AND childName = '" + oldChildCat + "' AND parentName = '" + oldParCat + "' AND budgeted = " + oldBudgeted);
+            rs.next();
+            String catID = rs.getString("catID");
+            sql.update("UPDATE `simpleBudget`.`MonthBudget` t SET t.`childName` = '" + childCat + "', t.`parentName` = '" + parCat +
+                    "', t.`budgeted` = " + budgeted + " WHERE t.`catID` LIKE '" + catID + "' ESCAPE '#'");
+            new Budget(window, sql);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void addCategoryOption3FillInInfo(JPanel panel) {
+        String parCat = "";
+        String childCat = "";
+        String budgeted = "";
+
+        for (Component c : window.getContentPane().getComponents())
+            if (c.getName().equals("JPanel - Table")) {
+                JTable jt = ((JTable) ((((JScrollPane) ((JPanel) c).getComponent(0)).getViewport()).getView()));
+                int row = jt.getSelectedRow();
+                while (jt.getValueAt(row, 0).toString().charAt(0) == ' ')
+                    row--;
+                parCat = jt.getValueAt(row, 0).toString();
+                row = jt.getSelectedRow();
+                childCat = jt.getValueAt(row, 0).toString();
+                while (childCat.charAt(0) == ' ')
+                    childCat = childCat.substring(1);
+                budgeted = jt.getValueAt(row, 1).toString().substring(1);
+                break;
+            }
+        for (Component c : panel.getComponents()) {
+            if (c.getName().equals("JComboBox - Parent category")) {
+                JComboBox<String> jcb = (JComboBox<String>) c;
+                for (int i = 0; i < jcb.size().height; i++)
+                    if (jcb.getItemAt(i).equals(parCat)) {
+                        jcb.setSelectedIndex(i);
+                        break;
+                    }
+            }
+            if (c.getName().equals("JTextField - Child category"))
+                ((JTextField) c).setText(childCat);
+            if (c.getName().equals("JTextField - Budgeted"))
+                ((JTextField) c).setText(budgeted);
+        }
+    }
+
     private boolean isParentRow(String[][] data, int row) {
+        if (data.length <= row)
+            return false;
+        if (data.length == 0)
+            return false;
+        if (data[0].length == 0)
+            return false;
         return data[row][0].charAt(0) != ' ';
     }
 
@@ -370,6 +936,12 @@ class Budget {
                 rs = new SQLConnector().select("SELECT * FROM MonthBudget ORDER BY dateMonth ASC, dateYear ASC");
             else rs = new SQLConnector().select("SELECT * FROM MonthBudget ORDER BY dateMonth DESC, dateYear DESC");
             rs.next();
+            if (rs.getFetchSize() == 0) {
+                for (Component c : window.getContentPane().getComponents())
+                    if (c.getName().equals("JPanel - Table options"))
+                        c.setVisible(true);
+                return;
+            }
             int mirrorMonth = Integer.parseInt(rs.getString("dateMonth"));
             int mirrorYear = Integer.parseInt(rs.getString("dateYear"));
             while (Integer.parseInt(rs.getString("dateMonth")) == mirrorMonth && Integer.parseInt(rs.getString("dateYear")) == mirrorYear) {
@@ -398,5 +970,25 @@ class Budget {
             e.printStackTrace();
         }
         return cID;
+    }
+
+    private void addCategory(JTable table) {
+        for (Component c : window.getContentPane().getComponents())
+            if (c.getName().equals("JPanel - Add category"))
+                c.setVisible(true);
+    }
+
+    private void removeCategory(JTable table) {
+        for (Component c : window.getContentPane().getComponents())
+            if (c.getName().equals("JPanel - Remove category"))
+                c.setVisible(true);
+    }
+
+    private void editCategory(JTable table) {
+        for (Component c : window.getContentPane().getComponents())
+            if (c.getName().equals("JPanel - Edit category")) {
+                c.setVisible(true);
+                addCategoryOption3FillInInfo(((JPanel) c));
+            }
     }
 }
