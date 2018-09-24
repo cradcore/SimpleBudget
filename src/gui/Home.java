@@ -50,7 +50,7 @@ public class Home {
         b1.setBorder(null);
         b1.setContentAreaFilled(false);
         b1.setFont(new Font("Lato", Font.BOLD, 60));
-        panel.add(b1, "alignx left");
+        panel.add(b1, "alignx center");
         b1.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent arg0) {
@@ -80,7 +80,7 @@ public class Home {
         b3.setBorder(null);
         b3.setContentAreaFilled(false);
         b3.setFont(new Font("Lato", Font.BOLD, 60));
-        panel.add(b3, "alignx right");
+//        panel.add(b3, "alignx center");
         b3.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent arg0) {
@@ -115,7 +115,7 @@ public class Home {
         if (page.equals("Budget"))
             sideMenuAddButton(window, panel, "Budget", 6, 100, sql);
         else sideMenuAddButton(window, panel, "Budget", 3, 100, sql);
-        sideMenuAddButton(window, panel, "Reports", 4, 800, sql);
+//        sideMenuAddButton(window, panel, "Reports", 4, 800, sql);
 
         window.add(panel, "dock west");
     }
@@ -130,7 +130,7 @@ public class Home {
         button.setBorder(null);
         button.setContentAreaFilled(false);
         button.setFont(new Font("Lato", Font.BOLD, 60));
-        panel.add(button, "wrap");
+        panel.add(button, "dock north");
 
         sideMenuAddButtonListener(window, button, sql);
     }
@@ -141,7 +141,6 @@ public class Home {
         button.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent arg0) {
-                System.out.println(name + " clicked");
                 switch (name) {
                     case "Home":
                         new Home(window, sql);
