@@ -1,2 +1,2 @@
 # SimpleBudget
-Simple Budgeting Application
+Personal Budgeting Application
