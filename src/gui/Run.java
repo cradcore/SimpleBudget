@@ -30,7 +30,8 @@ public class Run {
         EventQueue.invokeLater(new Runnable() {
             public void run() {
                 try {
-                    new Home(window, sql);
+//                    new AllAccounts(window, sql);
+                    new ImportTransactions(window);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }

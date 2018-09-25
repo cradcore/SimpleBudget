@@ -130,7 +130,7 @@ class AllAccounts {
         editTransactionButton.setBorderPainted(false);
         editTransactionButton.setBorder(null);
         editTransactionButton.setContentAreaFilled(false);
-        panel.add(editTransactionButton, "wrap");
+        panel.add(editTransactionButton);
         editTransactionButton.setMargin(margins);
         editTransactionButton.addMouseListener(new MouseAdapter() {
             @Override
@@ -154,6 +154,16 @@ class AllAccounts {
                     toggleTransactionButtons(false);
             }
         });
+
+        JLabel importLabel = new JLabel();
+        importLabel.setIcon(new ImageIcon("resources/all_accounts-top_menu_4.png"));
+        importLabel.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                new ImportTransactions(window);
+            }
+        });
+        panel.add(importLabel, "wrap");
 
         JLabel transLabel = new JLabel("    You must select a transaction to edit it");
         transLabel.setName("Edit transaction error");
