@@ -936,19 +936,20 @@ class Budget {
                 rs = new SQLConnector().select("SELECT * FROM MonthBudget ORDER BY dateMonth ASC, dateYear ASC");
             else rs = new SQLConnector().select("SELECT * FROM MonthBudget ORDER BY dateMonth DESC, dateYear DESC");
             rs.next();
-            if (rs.getFetchSize() == 0) {
-                for (Component c : window.getContentPane().getComponents())
-                    if (c.getName().equals("JPanel - Table options"))
-                        c.setVisible(true);
-                return;
-            }
+//            if (rs.getFetchSize() == 0) {
+//                for (Component c : window.getContentPane().getComponents())
+//                    if (c.getName().equals("JPanel - Table options"))
+//                        c.setVisible(true);
+//                return;
+//            }
             int mirrorMonth = Integer.parseInt(rs.getString("dateMonth"));
             int mirrorYear = Integer.parseInt(rs.getString("dateYear"));
             while (Integer.parseInt(rs.getString("dateMonth")) == mirrorMonth && Integer.parseInt(rs.getString("dateYear")) == mirrorYear) {
                 sql.update("INSERT INTO `simpleBudget`.`MonthBudget` (`catID`, `dateMonth`, `dateYear`, `childName`, `parentName`, `budgeted`)\n" +
                         "VALUES ('" + getNewCatID() + "', " + month + ", " + year + ", '" + rs.getString("childName") + "', '" +
                         rs.getString("parentName") + "', " + Integer.parseInt(rs.getString("budgeted")) + ");");
-                rs.next();
+                if (!rs.next())
+                    break;
             }
         } catch (Exception e) {
             e.printStackTrace();
