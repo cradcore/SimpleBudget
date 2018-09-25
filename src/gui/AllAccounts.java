@@ -117,6 +117,11 @@ class AllAccounts {
             @Override
             public void mouseClicked(MouseEvent arg0) {
                 toggleTransactionButtons(true);
+                for(Component c : window.getContentPane().getComponents())
+                    if(c.getName().equals("JPanel - New Transaction"))
+                        for(Component cc : ((JPanel) c).getComponents())
+                            if(cc.getName().equals("JComboBox - Categories"))
+                                ((JComboBox<String>) cc).setSelectedIndex(0);
             }
         });
 
@@ -144,6 +149,7 @@ class AllAccounts {
                                     cc.setVisible(true);
                                 else cc.setVisible(false);
                             }
+
                 if (transactionSelected)
                     toggleTransactionButtons(false);
             }
@@ -194,7 +200,11 @@ class AllAccounts {
         ((JTextField) Objects.requireNonNull(comp)[1]).setText(row.get(0));
         ((DatePicker) comp[2]).setDate(LocalDate.parse(row.get(1), DateTimeFormatter.ofPattern("M/d/yyyy")));
         ((JTextField) comp[3]).setText(row.get(2));
-        ((JTextField) comp[4]).setText(row.get(3));
+        String cat = row.get(3);
+        ArrayList<String> catArr = new ArrayList<>();
+        for (int i = 0; i < ((JComboBox<String>) comp[4]).getItemCount(); i++)
+            catArr.add(((JComboBox<String>) comp[4]).getItemAt(i).split(" \\(")[0]);
+        ((JComboBox<String>) comp[4]).setSelectedIndex(catArr.indexOf(cat));
         ((JTextField) comp[5]).setText(row.get(4));
         ((JTextField) comp[6]).setText(row.get(5));
         ((JTextField) comp[7]).setText(row.get(6));
@@ -236,7 +246,6 @@ class AllAccounts {
         ((JTextField) Objects.requireNonNull(comp)[1]).setText("Account");
         ((DatePicker) comp[2]).setDate(LocalDate.now());
         ((JTextField) comp[3]).setText("Payee");
-        ((JTextField) comp[4]).setText("Category");
         ((JTextField) comp[5]).setText("Memo");
         ((JTextField) comp[6]).setText("Outflow");
         ((JTextField) comp[7]).setText("Inflow");
@@ -304,7 +313,7 @@ class AllAccounts {
         setTextFieldNewTransaction(panel, "Account", 150);            // Account text field
         addDateDropdown(panel);                                                 // Date dropdown
         setTextFieldNewTransaction(panel, "Payee", 180);              // Payee text field
-        setTextFieldNewTransaction(panel, "Category", 150);           // Category text field
+        addCategoryDropDown(panel);                                             // Category dropdown
         setTextFieldNewTransaction(panel, "Memo", 450);               // Memo text field
         setTextFieldNewTransaction(panel, "Outflow", 75);             // Outflow text field
         setTextFieldNewTransaction(panel, "Inflow", 75);              // Inflow text field
@@ -318,6 +327,23 @@ class AllAccounts {
         window.add(panel, "dock north, hidemode 2");
 
         setButtonsNewTransaction();
+    }
+
+    private void addCategoryDropDown(JPanel panel) {
+        ResultSet rs = sql.select("SELECT * FROM MonthBudget GROUP BY childName ORDER BY parentName, childName");
+        ArrayList<String> cats = new ArrayList<>();
+        try {
+            while (rs.next())
+                cats.add(rs.getString("childName") + " (" + rs.getString("parentName") + ")");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        JComboBox<String> jcb = new JComboBox<>(cats.toArray(new String[0]));
+        jcb.setName("JComboBox - Categories");
+        jcb.setFont(new Font("Lato", Font.PLAIN, 15));
+        jcb.setPreferredSize(new Dimension(50, 33));
+        jcb.setForeground(Color.BLACK);
+        panel.add(jcb, "push, align center, hidemode 3");
     }
 
     private void addAccountDropdown(JPanel panel) {
@@ -334,7 +360,7 @@ class AllAccounts {
         JComboBox<String> jcb = new JComboBox<>(categories.toArray(new String[0]));
         jcb.setName("Account Dropdown");
         jcb.setFont(new Font("Lato", Font.PLAIN, 14));
-        jcb.setPreferredSize(new Dimension(100, 32));
+        jcb.setPreferredSize(new Dimension(100, 33));
         jcb.setVisible(true);
         jcb.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
@@ -370,7 +396,7 @@ class AllAccounts {
         ds.setFontTodayLabel(new Font("Lato", Font.PLAIN, 22));
         ds.setFontValidDate(new Font("Lato", Font.PLAIN, 13));
         date.setForeground(Color.GRAY);
-        date.setPreferredSize(new Dimension(80, 32));
+        date.setPreferredSize(new Dimension(80, 33));
         date.setDateToToday();
         date.setName("New Transaction - Date");
         panel.add(date);
@@ -470,9 +496,9 @@ class AllAccounts {
         if (((JTextField) jt.getComponent(1)).getText().equals("Account"))
             account = ((JComboBox<String>) jt.getComponent(0)).getSelectedItem().toString();
         else account = ((JTextField) jt.getComponent(1)).getText();
-
+        String cat = ((JComboBox<String>) jt.getComponent(4)).getSelectedItem().toString().split(" \\(")[0];
         String[] data = {account, date, ((JTextField) jt.getComponent(3)).getText(),
-                ((JTextField) jt.getComponent(4)).getText(), ((JTextField) jt.getComponent(5)).getText(),
+                cat, ((JTextField) jt.getComponent(5)).getText(),
                 ((JTextField) jt.getComponent(6)).getText(), ((JTextField) jt.getComponent(7)).getText()};
         if (data[5].charAt(0) == '$')
             data[5] = data[5].substring(1);
