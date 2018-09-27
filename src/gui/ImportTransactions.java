@@ -5,15 +5,13 @@ import net.miginfocom.swing.MigLayout;
 import sqlConnector.SQLConnector;
 
 import javax.swing.*;
+import javax.swing.border.LineBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.filechooser.FileSystemView;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
+import java.awt.event.*;
 import java.io.File;
 import java.sql.ResultSet;
 import java.util.ArrayList;
@@ -23,6 +21,8 @@ public class ImportTransactions {
 
     private JFrame mainWindow;
     private JFrame window;
+    private Scanner inFile;
+    private String line;
 
     public ImportTransactions(JFrame mainWindow) {
         this.mainWindow = mainWindow;
@@ -33,6 +33,8 @@ public class ImportTransactions {
         window.getContentPane().setName("Popup window content pane");
         window.setVisible(true);
         window.setTitle("Import Transactions");
+        window.getContentPane().setBackground(Color.decode("#ecf0f8"));
+
 
         initialize();
     }
@@ -155,13 +157,42 @@ public class ImportTransactions {
     private void addImportScreen() {
         JPanel panel = new JPanel(new MigLayout("fill", "grow", ""));
         panel.setName("JPanel - Import screen");
+        panel.setOpaque(false);
+        panel.setPreferredSize(window.getSize());
+
+        JLabel l1 = new JLabel("<htmL><center>Simple Budget was unable to match all of the imported transactions to a category. " +
+                "Please select a category for each of the entries listed below.<br><hr></center></html>");
+        l1.setName("JLabel - Instructions");
+        l1.setFont(new Font("Lato", Font.PLAIN, 20));
+        l1.setHorizontalAlignment(JLabel.CENTER);
+        panel.add(l1, "wrap, span 2");
 
         JTextField jtf = new JTextField();
-        jtf.setName("JTextField");
-        jtf.setPreferredSize(new Dimension((int) (window.getSize().width * .7), 30));
-        jtf.setFont(new Font("Lato", Font.PLAIN, 15));
+        jtf.setName("JTextField - Description");
+        jtf.setPreferredSize(new Dimension((int) (window.getSize().width), 30));
+        jtf.setFont(new Font("Lato", Font.PLAIN, 18));
+        jtf.setHorizontalAlignment(JTextField.CENTER);
         jtf.setEditable(false);
-        panel.add(jtf);
+        jtf.setOpaque(true);
+        jtf.setBackground(Color.decode("#ecf0f8"));
+        jtf.setBorder(new LineBorder(Color.BLACK, 1));
+        panel.add(jtf, "span 2, wrap");
+
+        JLabel l2 = new JLabel("<html><br>Name:</html>");
+        l2.setName("JLabel - Name");
+        l2.setFont(new Font("Lato", Font.PLAIN, 18));
+        panel.add(l2);
+
+        JLabel l3 = new JLabel("<html><br>Category:</html>");
+        l3.setName("JLabel - Category");
+        l3.setFont(new Font("Lato", Font.PLAIN, 18));
+        panel.add(l3, "wrap");
+
+        JTextField jtf2 = new JTextField();
+        jtf2.setName("JTextField - Name");
+        jtf2.setPreferredSize(new Dimension((int) (window.getSize().width * .6), 30));
+        jtf2.setFont(new Font("Lato", Font.PLAIN, 15));
+        panel.add(jtf2);
 
         ArrayList<String> cat = new ArrayList<>();
         cat.add("Select a category");
@@ -177,14 +208,29 @@ public class ImportTransactions {
         JComboBox<String> jcb = new JComboBox<>(cat.toArray(new String[0]));
         jcb.setName("JComboBox");
         jcb.setFont(new Font("Lato", Font.PLAIN, 18));
-        jcb.setPreferredSize(new Dimension((int) (window.getSize().width * .3), 30));
+        jcb.setPreferredSize(new Dimension((int) (window.getSize().width * .4), 30));
+        jcb.setBackground(Color.WHITE);
+        jcb.setEnabled(false);
         jcb.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                System.out.println("TRIGGERED BOIII");
+                addTransaction(jcb.getSelectedItem().toString(), jtf2.getText());
+                processLine();
+                jcb.setSelectedIndex(0);
+                jcb.setEnabled(false);
+                jtf2.setText("");
+                jtf2.requestFocus();
             }
         });
         panel.add(jcb, "wrap");
+
+        jtf2.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyTyped(KeyEvent e) {
+                if (!jtf2.getText().isEmpty())
+                    jcb.setEnabled(true);
+            }
+        });
 
         JProgressBar jpb = new JProgressBar(0, 100);
         jpb.setName("JProgressBar");
@@ -198,7 +244,6 @@ public class ImportTransactions {
     }
 
     private void beginImport(File file) {
-        Scanner inFile;
         try {
             inFile = new Scanner(file);
 
@@ -210,12 +255,9 @@ public class ImportTransactions {
                 if (c.getName().equals("JPanel - Import screen"))
                     c.setVisible(true);
             }
-            inFile.nextLine();
-            while (inFile.hasNextLine()) {
-                String[] line = inFile.nextLine().split(",");
-                parseCategory(line);
-                addTransaction(line);
-            }
+            if (inFile.hasNextLine())
+                inFile.nextLine();
+            processLine();
 
         } catch (Exception e) {
             for (Component c : window.getContentPane().getComponents())
@@ -227,24 +269,45 @@ public class ImportTransactions {
 
     }
 
+
+    private void processLine() {
+        if (inFile.hasNextLine()) {
+            line = inFile.nextLine();
+            String[] catName = parseCategory(line.split(","));
+            while (catName != null) {
+                if(inFile.hasNextLine()) {
+                    addTransaction(catName[0], catName[1]);
+                    line = inFile.nextLine();
+                    catName = parseCategory(line.split(","));
+                }
+                break;
+            }
+        } else {
+            System.out.println("DONE BOIII");
+        }
+    }
+
     private void updateTextField(String text) {
         for (Component c : window.getContentPane().getComponents())
             if (c.getName().equals("JPanel - Import screen"))
                 for (Component cc : ((JPanel) c).getComponents())
-                    if(cc.getName().equals("JTextField"))
+                    if (cc.getName().equals("JTextField - Description")) {
                         ((JTextField) cc).setText(text);
+                        return;
+                    }
+
     }
 
-    private String parseCategory(String[] line) {
-        String[] des = line[1].split(" ");
+    private String[] parseCategory(String[] line) {
+        String des = line[1];
         try {
-            ResultSet rs = new SQLConnector().select("SELECT * FROM CategoryParser");
+            ResultSet rs = new SQLConnector().select("SELECT Entry.payee, B.childName FROM Entry LEFT JOIN MonthBudget B on Entry.catID = B.catID");
             while (rs.next()) {
-                String knownDes = rs.getString("description");
-                for(int i = 0; i < des.length; i++)
-                    if(knownDes.contains(des[i])) {
-                        return rs.getString("category");
-                    }
+                String payee = rs.getString("payee");
+                if (des.toLowerCase().contains(payee.toLowerCase())) {
+                    String[] s = {rs.getString("childName"), payee};
+                    return s;
+                }
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -254,7 +317,12 @@ public class ImportTransactions {
         return null;
     }
 
-    private void addTransaction(String[] line) {
+    private void addTransaction(String cat, String name) {
+        System.out.println("(" + cat + ", " + name + ")\t\t\t\t\t\t\t\t" + line);
+        String id = AllAccounts.getEntryID();
+        String acc = "Debit card";
+        String[] date = line.split(",")[0].split("//");
+        String catID = null;
 
     }
 }

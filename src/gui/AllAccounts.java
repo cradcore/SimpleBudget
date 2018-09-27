@@ -601,12 +601,12 @@ class AllAccounts {
         return true;
     }
 
-    private String getEntryID() {
+    public static String getEntryID() {
         String ret = "";
         for (int i = 0; i < 6; i++)
             ret += (int) (Math.random() * 10) + "";
         try {
-            ResultSet rs = sql.select("SELECT * FROM Entry");
+            ResultSet rs = new SQLConnector().select("SELECT * FROM Entry");
             while (rs.next()) {
                 String id = rs.getString("entryID");
                 if (id.equals(ret)) {
