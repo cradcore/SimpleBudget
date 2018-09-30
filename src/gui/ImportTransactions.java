@@ -275,7 +275,7 @@ public class ImportTransactions {
             line = inFile.nextLine();
             String[] catName = parseCategory(line.split(","));
             while (catName != null) {
-                if(inFile.hasNextLine()) {
+                if (inFile.hasNextLine()) {
                     addTransaction(catName[0], catName[1]);
                     line = inFile.nextLine();
                     catName = parseCategory(line.split(","));
@@ -318,11 +318,36 @@ public class ImportTransactions {
     }
 
     private void addTransaction(String cat, String name) {
-        System.out.println("(" + cat + ", " + name + ")\t\t\t\t\t\t\t\t" + line);
+        String[] lineArr = line.split(",");
         String id = AllAccounts.getEntryID();
         String acc = "Debit card";
-        String[] date = line.split(",")[0].split("//");
-        String catID = null;
+        String[] date = lineArr[0].split("/");
+        String catID = getCatID(cat, date[0], date[2]);
+        String memo = lineArr[2];
+        String inflow = null;
+        String outflow = null;
+        if (lineArr[4].charAt(0) == '(') {
+            inflow = "0.00";
+            outflow = lineArr[4].substring(2, lineArr.length - 2);
+        } else {
+            inflow = lineArr[4].substring(2, lineArr.length - 2);
+            outflow = "0.00";
+        }
+        System.out.println(id + "," + acc + "," + date[1] + "," + date[0] + "," + date[2] + "," + name + "," + catID + "," + memo + "," + outflow + "," + inflow);
+    }
 
+    private String getCatID(String catName, String dateMonth, String dateYear) {
+        String catID = null;
+        ResultSet rs = new SQLConnector().select("SELECT * FROM MonthBudget WHERE dateMonth = " + dateMonth + " AND dateYear = " + dateYear + " AND childName = '" + catName + "'");
+        try {
+            if(rs.next())
+                return rs.getString("catID");
+            else return Budget.getNewCatID();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+
+        return catID;
     }
 }

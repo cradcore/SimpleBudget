@@ -950,12 +950,12 @@ class Budget {
         }
     }
 
-    private String getNewCatID() {
+    static String getNewCatID() {
         String cID = "";
         for (int i = 0; i < 6; i++)
             cID += (int) (Math.random() * 10) + "";
         try {
-            ResultSet rs = sql.select("SELECT * FROM MonthBudget");
+            ResultSet rs = new SQLConnector().select("SELECT * FROM MonthBudget");
             while (rs.next()) {
                 String id = rs.getString("catID");
                 if (id.equals(cID))
