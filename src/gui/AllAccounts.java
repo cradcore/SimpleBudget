@@ -14,6 +14,7 @@ import net.miginfocom.swing.*;
 import sqlConnector.SQLConnector;
 
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -130,7 +131,7 @@ class AllAccounts {
         editTransactionButton.setBorderPainted(false);
         editTransactionButton.setBorder(null);
         editTransactionButton.setContentAreaFilled(false);
-        panel.add(editTransactionButton, "wrap");
+        panel.add(editTransactionButton);
         editTransactionButton.setMargin(margins);
         editTransactionButton.addMouseListener(new MouseAdapter() {
             @Override
@@ -154,6 +155,16 @@ class AllAccounts {
                     toggleTransactionButtons(false);
             }
         });
+
+        JLabel importLabel = new JLabel();
+        importLabel.setIcon(new ImageIcon("resources/all_accounts-top_menu_4.png"));
+        importLabel.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                new ImportTransactions(window);
+            }
+        });
+        panel.add(importLabel, "wrap");
 
         JLabel transLabel = new JLabel("    You must select a transaction to edit it");
         transLabel.setName("Edit transaction error");
@@ -225,7 +236,8 @@ class AllAccounts {
         ResultSet rs = sql.select(select);
         String entryID = null;
         try {
-            Objects.requireNonNull(rs).next();
+            if(!rs.next())
+                throw new SQLException(select);
             entryID = rs.getString("entryID");
         } catch (Exception e) {
             e.printStackTrace();
@@ -591,12 +603,12 @@ class AllAccounts {
         return true;
     }
 
-    private String getEntryID() {
+    public static String getEntryID() {
         String ret = "";
         for (int i = 0; i < 6; i++)
             ret += (int) (Math.random() * 10) + "";
         try {
-            ResultSet rs = sql.select("SELECT * FROM Entry");
+            ResultSet rs = new SQLConnector().select("SELECT * FROM Entry");
             while (rs.next()) {
                 String id = rs.getString("entryID");
                 if (id.equals(ret)) {

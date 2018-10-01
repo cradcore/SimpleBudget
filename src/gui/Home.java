@@ -54,7 +54,6 @@ public class Home {
         b1.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent arg0) {
-                System.out.println("All Accounts clicked");
                 new AllAccounts(window, sql);
             }
         });
@@ -68,7 +67,6 @@ public class Home {
         b2.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent arg0) {
-                System.out.println("Budget clicked");
                 new Budget(window, sql);
             }
         });

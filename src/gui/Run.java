@@ -39,7 +39,7 @@ public class Run {
     }
 
     private static void removeUnusedBudgetMonths(SQLConnector sql) {
-        ResultSet rs = sql.select("SELECT * FROM MonthBudget m WHERE NOT EXISTS(SELECT * FROM Entry e WHERE m.dateYear = e.dateYear AND m.dateMonth = e.dateMonth)");
+        ResultSet rs = new SQLConnector().select("SELECT * FROM MonthBudget m WHERE NOT EXISTS(SELECT * FROM Entry e WHERE m.dateYear = e.dateYear AND m.dateMonth = e.dateMonth)");
         try {
             while (rs.next()) {
                 String catID = rs.getString("catID");
@@ -49,5 +49,4 @@ public class Run {
             e.printStackTrace();
         }
     }
-
 }
