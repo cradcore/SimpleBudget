@@ -31,7 +31,6 @@ public class Run {
             public void run() {
                 try {
                     new Home(window, sql);
-//                    new ImportTransactions(window);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -50,5 +49,4 @@ public class Run {
             e.printStackTrace();
         }
     }
-
 }

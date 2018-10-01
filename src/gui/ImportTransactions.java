@@ -27,9 +27,12 @@ public class ImportTransactions {
     private Scanner inFile;
     private String line;
     private int totalLines = 0;
+    private int csvSize = 0;
+    private SQLConnector sql;
 
     public ImportTransactions(JFrame mainWindow) {
         this.mainWindow = mainWindow;
+        sql = new SQLConnector();
         window = new JFrame();
         window.setBounds(500, 325, 800, 450);
         window.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
@@ -112,6 +115,7 @@ public class ImportTransactions {
 
         addFileChooser();
         addImportScreen();
+        select.doClick();
     }
 
     private String openFileExplorer() {
@@ -126,6 +130,15 @@ public class ImportTransactions {
 
         if (returnValue == JFileChooser.APPROVE_OPTION) {
             File selectedFile = jfc.getSelectedFile();
+            try {
+                Scanner in = new Scanner(selectedFile);
+                while(in.hasNextLine()) {
+                    csvSize++;
+                    in.nextLine();
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
             return selectedFile.getAbsolutePath();
         } else return "";
 
@@ -312,16 +325,15 @@ public class ImportTransactions {
     }
 
     private void saveTransaction(JComboBox<String> jcb, JTextField jtf2, JTextField jtf3, JTextField jtf4, JButton jb) {
-        System.out.println("TRIGGERED BOIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII ya ya");
         String des = line.split(",")[1],
                 childCat = null,
                 payee = jtf2.getText();
-        if(jcb.getSelectedItem().toString().equals("<Add new category>"))
+        if (jcb.getSelectedItem().toString().equals("<Add new category>"))
             childCat = jtf4.getText();
         else childCat = jcb.getSelectedItem().toString();
-        new SQLConnector().update("INSERT INTO `simpleBudget`.`CategoryParser` (`description`, `childCategory`, `payee`) " +
+        sql.update("INSERT INTO `simpleBudget`.`CategoryParser` (`description`, `childCategory`, `payee`) " +
                 "VALUES ('" + des + "', '" + childCat + "', '" + payee + "')");
-        addTransaction(jcb.getSelectedItem().toString(), jtf2.getText());
+        addTransaction(childCat, payee);
         processLine();
         jcb.setSelectedIndex(0);
         jcb.setEnabled(false);
@@ -341,7 +353,7 @@ public class ImportTransactions {
         ArrayList<String> cat = new ArrayList<>();
         cat.add("Select a category");
         try {
-            ResultSet rs = new SQLConnector().select("SELECT DISTINCT childName FROM MonthBudget ORDER BY childName");
+            ResultSet rs = sql.select("SELECT DISTINCT childName FROM MonthBudget ORDER BY childName");
             while (rs.next()) {
                 cat.add(rs.getString("childName"));
             }
@@ -382,15 +394,22 @@ public class ImportTransactions {
         if (inFile.hasNextLine()) {
             totalLines++;
             line = inFile.nextLine();
+            while(line.contains("\""))
+                line = line.substring(0, line.indexOf("\"")) + line.substring(line.indexOf("\"") + 1, line.length());
+            while(line.contains("'"))
+                line = line.substring(0, line.indexOf("'")) + line.substring(line.indexOf("'") + 1, line.length());
             String[] catName = parseCategory(line.split(","));
             while (catName != null) {
                 if (inFile.hasNextLine()) {
                     totalLines++;
                     addTransaction(catName[0], catName[1]);
                     line = inFile.nextLine();
+                    while(line.contains("\""))
+                        line = line.substring(0, line.indexOf("\"")) + line.substring(line.indexOf("\"") + 1, line.length());
+                    while(line.contains("'"))
+                        line = line.substring(0, line.indexOf("'")) + line.substring(line.indexOf("'") + 1, line.length());
                     catName = parseCategory(line.split(","));
-                }
-                else {
+                } else {
                     catName = null;
                     closeImportWindow();
                 }
@@ -414,7 +433,7 @@ public class ImportTransactions {
     private String[] parseCategory(String[] line) {
         String des = line[1];
         try {
-            ResultSet rs = new SQLConnector().select("SELECT Entry.payee, B.childName FROM Entry LEFT JOIN MonthBudget B on Entry.catID = B.catID");
+            ResultSet rs = sql.select("SELECT Entry.payee, B.childName FROM Entry LEFT JOIN MonthBudget B on Entry.catID = B.catID");
             while (rs.next()) {
                 String payee = rs.getString("payee");
                 if (des.toLowerCase().contains(payee.toLowerCase())) {
@@ -422,8 +441,8 @@ public class ImportTransactions {
                     return s;
                 }
             }
-            rs = new SQLConnector().select("SELECT * FROM CategoryParser WHERE description = '" + des + "'");
-            if(rs.next()) {
+            rs = sql.select("SELECT * FROM CategoryParser WHERE description = '" + des + "'");
+            if (rs.next()) {
                 String[] s = {rs.getString("childCategory"), rs.getString("payee")};
                 return s;
             }
@@ -436,7 +455,9 @@ public class ImportTransactions {
     }
 
     private void addTransaction(String cat, String name) {
-        String[] lineArr = line.split(",");
+        getProgressBar().setValue((int) ((Double.parseDouble(totalLines + "") / Double.parseDouble(csvSize + "")) * 100));
+        getProgressBar().setStringPainted(true);
+        String[]lineArr = line.split(",");
         String id = AllAccounts.getEntryID();
         String acc = "Debit card";
         String[] date = lineArr[0].split("/");
@@ -452,7 +473,7 @@ public class ImportTransactions {
             outflow = "0.00";
         }
         try {
-            ResultSet rs = new SQLConnector().select("SELECT * FROM Entry WHERE accountName = '" + acc + "' AND dateDay = " +
+            ResultSet rs = sql.select("SELECT * FROM Entry WHERE accountName = '" + acc + "' AND dateDay = " +
                     date[1] + " AND dateMonth = " + date[0] + " AND dateYear = " + date[2] + " AND payee = '" + name + "' AND catID = '" + catID +
                     "' AND memo = '" + memo + "' AND outflow = " + outflow + " AND inflow = " + inflow);
             if (rs.next()) {
@@ -465,11 +486,10 @@ public class ImportTransactions {
                 "`dateMonth`, `dateYear`, `payee`, `catID`, `memo`, `outflow`, `inflow`) VALUES ('" +
                 id + "', '" + acc + "', " + date[1] + ", " + date[0] + ", " + date[2] + ", '" + name + "', '" + catID +
                 "', '" + memo + "', " + outflow + ", " + inflow + ")";
-        new SQLConnector().update(update);
+        sql.update(update);
     }
 
     private String getCatID(String catName, String dateMonth, String dateYear) {
-        SQLConnector sql = new SQLConnector();
         String catID = null;
         ResultSet rs = sql.select("SELECT * FROM MonthBudget WHERE dateMonth = " + dateMonth + " AND dateYear = " + dateYear + " AND childName = '" + catName + "'");
         try {
@@ -513,6 +533,11 @@ public class ImportTransactions {
                 }
                 sql.update("INSERT INTO MonthBudget(`catID`, `dateMonth`, `dateYear`, `childName`, `parentName`, `budgeted`) VALUES " +
                         "('" + Budget.getNewCatID() + "', " + dateMonth + ", " + dateYear + ", '" + childCat + "', '" + parCat + "', 0.00);");
+                rs = sql.select("SELECT * FROM MonthBudget WHERE dateMonth = " + dateMonth + " AND dateYear = " + dateYear +
+                " AND childName = '" + childCat + "' AND parentName = '" + parCat + "'");
+                if(!rs.next())
+                    throw new SQLException();
+                catID = rs.getString("catID");
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -542,5 +567,14 @@ public class ImportTransactions {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    private JProgressBar getProgressBar() {
+        for (Component c : window.getContentPane().getComponents())
+            if (c.getName().equals("JPanel - Import screen"))
+                for (Component cc : ((JPanel) c).getComponents())
+                    if (cc.getName().equals("JProgressBar"))
+                        return ((JProgressBar) cc);
+        return null;
     }
 }
