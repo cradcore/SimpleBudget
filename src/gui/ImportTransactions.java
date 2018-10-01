@@ -14,8 +14,11 @@ import java.awt.*;
 import java.awt.event.*;
 import java.io.File;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Scanner;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class ImportTransactions {
 
@@ -23,12 +26,20 @@ public class ImportTransactions {
     private JFrame window;
     private Scanner inFile;
     private String line;
+    private int totalLines = 0;
 
     public ImportTransactions(JFrame mainWindow) {
         this.mainWindow = mainWindow;
         window = new JFrame();
         window.setBounds(500, 325, 800, 450);
         window.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        window.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                super.windowClosing(e);
+                new AllAccounts(mainWindow, new SQLConnector());
+            }
+        });
         window.setContentPane(new JPanel(new MigLayout("gap rel 0", "grow")));
         window.getContentPane().setName("Popup window content pane");
         window.setVisible(true);
@@ -50,7 +61,7 @@ public class ImportTransactions {
         title.setHorizontalAlignment(JLabel.CENTER);
         title.setBackground(Color.decode("#b3c5e5"));
         title.setOpaque(true);
-        window.add(title, "dock north");
+        window.add(title, "dock north, hidemode 3");
 
         JLabel instructions = new JLabel("<html>Select the file you would like to import: &nbsp &nbsp &nbsp </html>");
         instructions.setName("JLabel - Instructions");
@@ -101,7 +112,6 @@ public class ImportTransactions {
 
         addFileChooser();
         addImportScreen();
-        beginImport(new File("C:\\Users\\Corey\\Downloads\\S10 - Free Checking.csv"));
     }
 
     private String openFileExplorer() {
@@ -162,12 +172,21 @@ public class ImportTransactions {
 
         JLabel l1 = new JLabel("<htmL><center>Simple Budget was unable to match all of the imported transactions to a category. " +
                 "Please select a category for each of the entries listed below.<br><hr></center></html>");
+        JLabel l2 = new JLabel("<html><br>Name:</html>");
+        JLabel l3 = new JLabel("<html><br>&nbsp &nbsp Category:</html>");
+        JTextField jtf = new JTextField();
+        JTextField jtf2 = new JTextField();
+        JTextField jtf3 = new JTextField("Parent category");
+        JTextField jtf4 = new JTextField("Child category");
+        JButton jb = new JButton("Save");
+        JComboBox<String> jcb = new JComboBox<>(getCategories());
+        JProgressBar jpb = new JProgressBar(0, 100);
+
         l1.setName("JLabel - Instructions");
         l1.setFont(new Font("Lato", Font.PLAIN, 20));
         l1.setHorizontalAlignment(JLabel.CENTER);
         panel.add(l1, "wrap, span 2");
 
-        JTextField jtf = new JTextField();
         jtf.setName("JTextField - Description");
         jtf.setPreferredSize(new Dimension((int) (window.getSize().width), 30));
         jtf.setFont(new Font("Lato", Font.PLAIN, 18));
@@ -178,22 +197,147 @@ public class ImportTransactions {
         jtf.setBorder(new LineBorder(Color.BLACK, 1));
         panel.add(jtf, "span 2, wrap");
 
-        JLabel l2 = new JLabel("<html><br>Name:</html>");
         l2.setName("JLabel - Name");
         l2.setFont(new Font("Lato", Font.PLAIN, 18));
         panel.add(l2);
 
-        JLabel l3 = new JLabel("<html><br>Category:</html>");
         l3.setName("JLabel - Category");
         l3.setFont(new Font("Lato", Font.PLAIN, 18));
         panel.add(l3, "wrap");
 
-        JTextField jtf2 = new JTextField();
         jtf2.setName("JTextField - Name");
-        jtf2.setPreferredSize(new Dimension((int) (window.getSize().width * .6), 30));
+        jtf2.setPreferredSize(new Dimension((int) (window.getSize().width * .5), 30));
         jtf2.setFont(new Font("Lato", Font.PLAIN, 15));
+        jtf2.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyTyped(KeyEvent e) {
+                if (!jtf2.getText().isEmpty())
+                    jcb.setEnabled(true);
+            }
+        });
         panel.add(jtf2);
 
+        jtf3.setName("JTextField - Parent category");
+        jtf3.setForeground(Color.GRAY);
+        jtf3.setFont(new Font("Lato", Font.PLAIN, 18));
+        jtf3.setPreferredSize(new Dimension((int) (window.getSize().width * .4), 30));
+        jtf3.addFocusListener(new FocusListener() {
+            @Override
+            public void focusGained(FocusEvent e) {
+                if (jtf3.getText().equals("Parent category")) {
+                    jtf3.setText("");
+                    jtf3.setForeground(Color.BLACK);
+                }
+            }
+
+            @Override
+            public void focusLost(FocusEvent e) {
+                if (jtf3.getText().isEmpty()) {
+                    jtf3.setText("Parent category");
+                    jtf3.setForeground(Color.GRAY);
+                }
+            }
+        });
+        jtf3.setVisible(false);
+
+        jtf4.setName("JTextField - Child category");
+        jtf4.setForeground(Color.GRAY);
+        jtf4.setFont(new Font("Lato", Font.PLAIN, 18));
+        jtf4.addFocusListener(new FocusListener() {
+            @Override
+            public void focusGained(FocusEvent e) {
+                if (jtf4.getText().equals("Child category")) {
+                    jtf4.setText("");
+                    jtf4.setForeground(Color.BLACK);
+                }
+            }
+
+            @Override
+            public void focusLost(FocusEvent e) {
+                if (jtf4.getText().isEmpty()) {
+                    jtf4.setText("Child category");
+                    jtf4.setForeground(Color.GRAY);
+                }
+            }
+        });
+        jtf4.setPreferredSize(jtf3.getPreferredSize());
+        jtf4.setVisible(false);
+        panel.add(jtf4, "al right, span 2, hidemode 3, wrap");
+
+        panel.add(jtf3, "span 2, al right, wrap, hidemode 3");
+
+        jb.setName("JButton");
+        jb.setForeground(Color.BLACK);
+        jb.setBackground(Color.decode("#b3c5e5"));
+        jb.setVisible(false);
+        jb.setPreferredSize(jtf3.getPreferredSize());
+        jb.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (!(jtf2.getText().isEmpty() || jtf3.getText().isEmpty() || jtf3.getText().equals("Parent category") || jtf4.getText().isEmpty() || jtf4.getText().equals("Child category")))
+                    saveTransaction(jcb, jtf2, jtf3, jtf4, jb);
+            }
+        });
+        panel.add(jb, "wrap, hidemode 3, al right, span 2");
+
+        jcb.setName("JComboBox");
+        jcb.setFont(new Font("Lato", Font.PLAIN, 18));
+        jcb.setPreferredSize(new Dimension((int) (window.getSize().width * .4), 30));
+        jcb.setBackground(Color.WHITE);
+        jcb.setEnabled(false);
+        jcb.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (jcb.getSelectedItem().toString().equals("<Add new category>")) {
+                    jtf3.setVisible(true);
+                    jtf4.setVisible(true);
+                    jb.setVisible(true);
+                    jcb.setVisible(false);
+                    jtf2.requestFocus();
+                } else if (jcb.getSelectedIndex() != 0) {
+                    saveTransaction(jcb, jtf2, jtf3, jtf4, jb);
+                }
+            }
+        });
+        panel.add(jcb, "al right, wrap, hidemode 3");
+
+        jpb.setName("JProgressBar");
+        jpb.setValue(0);
+        jpb.setStringPainted(true);
+        jpb.setPreferredSize(new Dimension(panel.getMaximumSize().width, 30));
+        panel.add(jpb, "span 2, gapy 50");
+
+        panel.setVisible(false);
+        window.add(panel, "hidemode 3");
+    }
+
+    private void saveTransaction(JComboBox<String> jcb, JTextField jtf2, JTextField jtf3, JTextField jtf4, JButton jb) {
+        System.out.println("TRIGGERED BOIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII ya ya");
+        String des = line.split(",")[1],
+                childCat = null,
+                payee = jtf2.getText();
+        if(jcb.getSelectedItem().toString().equals("<Add new category>"))
+            childCat = jtf4.getText();
+        else childCat = jcb.getSelectedItem().toString();
+        new SQLConnector().update("INSERT INTO `simpleBudget`.`CategoryParser` (`description`, `childCategory`, `payee`) " +
+                "VALUES ('" + des + "', '" + childCat + "', '" + payee + "')");
+        addTransaction(jcb.getSelectedItem().toString(), jtf2.getText());
+        processLine();
+        jcb.setSelectedIndex(0);
+        jcb.setEnabled(false);
+        jcb.setVisible(true);
+        jtf2.setText("");
+        jtf2.requestFocus();
+        jtf3.setText("Parent category");
+        jtf3.setForeground(Color.GRAY);
+        jtf3.setVisible(false);
+        jtf4.setText("Child category");
+        jtf4.setForeground(Color.GRAY);
+        jtf4.setVisible(false);
+        jb.setVisible(false);
+    }
+
+    private String[] getCategories() {
         ArrayList<String> cat = new ArrayList<>();
         cat.add("Select a category");
         try {
@@ -205,42 +349,7 @@ public class ImportTransactions {
             e.printStackTrace();
         }
         cat.add("<Add new category>");
-        JComboBox<String> jcb = new JComboBox<>(cat.toArray(new String[0]));
-        jcb.setName("JComboBox");
-        jcb.setFont(new Font("Lato", Font.PLAIN, 18));
-        jcb.setPreferredSize(new Dimension((int) (window.getSize().width * .4), 30));
-        jcb.setBackground(Color.WHITE);
-        jcb.setEnabled(false);
-        jcb.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                addTransaction(jcb.getSelectedItem().toString(), jtf2.getText());
-                processLine();
-                jcb.setSelectedIndex(0);
-                jcb.setEnabled(false);
-                jtf2.setText("");
-                jtf2.requestFocus();
-            }
-        });
-        panel.add(jcb, "wrap");
-
-        jtf2.addKeyListener(new KeyAdapter() {
-            @Override
-            public void keyTyped(KeyEvent e) {
-                if (!jtf2.getText().isEmpty())
-                    jcb.setEnabled(true);
-            }
-        });
-
-        JProgressBar jpb = new JProgressBar(0, 100);
-        jpb.setName("JProgressBar");
-        jpb.setValue(0);
-        jpb.setStringPainted(true);
-        jpb.setPreferredSize(new Dimension(panel.getMaximumSize().width, 30));
-        panel.add(jpb, "span 2, gapy 50");
-
-        panel.setVisible(false);
-        window.add(panel, "hidemode 3");
+        return cat.toArray(new String[0]);
     }
 
     private void beginImport(File file) {
@@ -269,21 +378,25 @@ public class ImportTransactions {
 
     }
 
-
     private void processLine() {
         if (inFile.hasNextLine()) {
+            totalLines++;
             line = inFile.nextLine();
             String[] catName = parseCategory(line.split(","));
             while (catName != null) {
                 if (inFile.hasNextLine()) {
+                    totalLines++;
                     addTransaction(catName[0], catName[1]);
                     line = inFile.nextLine();
                     catName = parseCategory(line.split(","));
                 }
-                break;
+                else {
+                    catName = null;
+                    closeImportWindow();
+                }
             }
         } else {
-            System.out.println("DONE BOIII");
+            closeImportWindow();
         }
     }
 
@@ -309,6 +422,11 @@ public class ImportTransactions {
                     return s;
                 }
             }
+            rs = new SQLConnector().select("SELECT * FROM CategoryParser WHERE description = '" + des + "'");
+            if(rs.next()) {
+                String[] s = {rs.getString("childCategory"), rs.getString("payee")};
+                return s;
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -328,26 +446,101 @@ public class ImportTransactions {
         String outflow = null;
         if (lineArr[4].charAt(0) == '(') {
             inflow = "0.00";
-            outflow = lineArr[4].substring(2, lineArr.length - 2);
+            outflow = lineArr[4].substring(2, lineArr[4].length() - 1);
         } else {
-            inflow = lineArr[4].substring(2, lineArr.length - 2);
+            inflow = lineArr[4].substring(2, lineArr[4].length() - 1);
             outflow = "0.00";
         }
-        System.out.println(id + "," + acc + "," + date[1] + "," + date[0] + "," + date[2] + "," + name + "," + catID + "," + memo + "," + outflow + "," + inflow);
+        try {
+            ResultSet rs = new SQLConnector().select("SELECT * FROM Entry WHERE accountName = '" + acc + "' AND dateDay = " +
+                    date[1] + " AND dateMonth = " + date[0] + " AND dateYear = " + date[2] + " AND payee = '" + name + "' AND catID = '" + catID +
+                    "' AND memo = '" + memo + "' AND outflow = " + outflow + " AND inflow = " + inflow);
+            if (rs.next()) {
+                return;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        String update = "INSERT INTO `simpleBudget`.`Entry` (`entryID`, `accountName`, `dateDay`, " +
+                "`dateMonth`, `dateYear`, `payee`, `catID`, `memo`, `outflow`, `inflow`) VALUES ('" +
+                id + "', '" + acc + "', " + date[1] + ", " + date[0] + ", " + date[2] + ", '" + name + "', '" + catID +
+                "', '" + memo + "', " + outflow + ", " + inflow + ")";
+        new SQLConnector().update(update);
     }
 
     private String getCatID(String catName, String dateMonth, String dateYear) {
+        SQLConnector sql = new SQLConnector();
         String catID = null;
-        ResultSet rs = new SQLConnector().select("SELECT * FROM MonthBudget WHERE dateMonth = " + dateMonth + " AND dateYear = " + dateYear + " AND childName = '" + catName + "'");
+        ResultSet rs = sql.select("SELECT * FROM MonthBudget WHERE dateMonth = " + dateMonth + " AND dateYear = " + dateYear + " AND childName = '" + catName + "'");
         try {
-            if(rs.next())
-                return rs.getString("catID");
-            else return Budget.getNewCatID();
+            if (rs.next())
+                catID = rs.getString("catID");
+            else {
+                JComboBox<String> jcb = null;
+                JTextField jtf2 = null,
+                        jtf3 = null,
+                        jtf4 = null;
+                for (Component c : window.getContentPane().getComponents()) {
+                    if (c.getName().equals("JPanel - Import screen"))
+                        for (Component cc : ((JPanel) c).getComponents()) {
+                            if (cc.getName().equals("JTextField - Name"))
+                                jtf2 = ((JTextField) cc);
+                            else if (cc.getName().equals("JTextField - Child category"))
+                                jtf3 = ((JTextField) cc);
+                            else if (cc.getName().equals("JTextField - Parent category"))
+                                jtf4 = ((JTextField) cc);
+                            else if (cc.getName().equals("JComboBox"))
+                                jcb = ((JComboBox<String>) cc);
+                        }
+                }
+                String childCat = null,
+                        parCat = null,
+                        payee = null;
+                payee = jtf2.getText();
+                if (jcb.getSelectedItem().toString().equals("<Add new category>")) {
+                    childCat = jtf3.getText();
+                    parCat = jtf4.getText();
+                } else {
+                    childCat = jcb.getSelectedItem().toString();
+                    try {
+                        rs = sql.select("SELECT * FROM MonthBudget WHERE childName = '" + childCat + "'");
+                        if (!rs.next())
+                            throw new SQLException();
+                        parCat = rs.getString("parentName");
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+                sql.update("INSERT INTO MonthBudget(`catID`, `dateMonth`, `dateYear`, `childName`, `parentName`, `budgeted`) VALUES " +
+                        "('" + Budget.getNewCatID() + "', " + dateMonth + ", " + dateYear + ", '" + childCat + "', '" + parCat + "', 0.00);");
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
 
-
         return catID;
+    }
+
+    private void closeImportWindow() {
+        JPanel panel = new JPanel(new MigLayout());
+        JLabel l = new JLabel("<html><center>Successfully processed " + totalLines + " transactions!</center></html>");
+        l.setForeground(Color.RED);
+        l.setFont(new Font("Lato", Font.PLAIN, 25));
+        l.setHorizontalAlignment(JLabel.CENTER);
+        panel.add(l, "al center");
+        for (Component c : window.getContentPane().getComponents())
+            c.setVisible(false);
+        window.add(panel, "dock north, al center, hidemode 3");
+        try {
+            Timer t = new Timer();
+            t.schedule(new TimerTask() {
+                @Override
+                public void run() {
+                    window.dispatchEvent(new WindowEvent(window, WindowEvent.WINDOW_CLOSING));
+                }
+            }, 3000);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }

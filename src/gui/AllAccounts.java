@@ -14,6 +14,7 @@ import net.miginfocom.swing.*;
 import sqlConnector.SQLConnector;
 
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -235,7 +236,8 @@ class AllAccounts {
         ResultSet rs = sql.select(select);
         String entryID = null;
         try {
-            Objects.requireNonNull(rs).next();
+            if(!rs.next())
+                throw new SQLException(select);
             entryID = rs.getString("entryID");
         } catch (Exception e) {
             e.printStackTrace();

@@ -101,9 +101,9 @@ class Budget {
         for (int i = 0; i < 12; i++) {
             LocalDate ld;
             if (i < 9)
-                ld = LocalDate.parse(LocalDate.now().getYear() + "-0" + (i + 1) + "-" + LocalDate.now().getDayOfMonth());
+                ld = LocalDate.parse(LocalDate.now().getYear() + "-0" + (i + 1) + "-01");
             else
-                ld = LocalDate.parse(LocalDate.now().getYear() + "-" + (i + 1) + "-" + LocalDate.now().getDayOfMonth());
+                ld = LocalDate.parse(LocalDate.now().getYear() + "-" + (i + 1) + "-01");
             JLabel month = new JLabel("  " + ld.getMonth().toString().substring(0, 3) + "  ");
             month.setFont(new Font("Lato", Font.BOLD, 25));
             month.setForeground(Color.WHITE);
