@@ -1,5 +1,5 @@
 # SimpleBudget
-###Personal Budgeting Application
+### Personal Budgeting Application
 Connects to local sql database to store transaction information
 
 <br></br>
