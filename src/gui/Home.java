@@ -13,6 +13,7 @@ public class Home {
 
     private JFrame window;
     private SQLConnector sql;
+
     // Create the application.
     public Home(JFrame window, SQLConnector sql) {
         this.window = window;
@@ -87,7 +88,7 @@ public class Home {
         });
     }
 
-    protected static void addTitle(JFrame window, String title) {
+    static void addTitle(JFrame window, String title) {
         JPanel panel = new JPanel(new MigLayout("fill, insets 0, gap rel 0", "grow"));
         panel.setName("JPanel - Title");
         panel.setBackground(new Color(0, 0, 0, 0));
@@ -100,7 +101,7 @@ public class Home {
         window.add(panel, "dock north");
     }
 
-    protected static void addSideMenu(JFrame window, String page, SQLConnector sql) {
+    static void addSideMenu(JFrame window, String page, SQLConnector sql) {
         JPanel panel = new JPanel(new MigLayout("fill, insets 0, gap rel 0", "grow"));
         panel.setName("JPanel - Side Menu");
         panel.setBackground(Color.decode("#8faadc"));
@@ -118,7 +119,7 @@ public class Home {
         window.add(panel, "dock west");
     }
 
-    protected static void sideMenuAddButton(JFrame window, JPanel panel, String name, int image, int height, SQLConnector sql) {
+    private static void sideMenuAddButton(JFrame window, JPanel panel, String name, int image, int height, SQLConnector sql) {
         Insets margins = new Insets(0, 0, 0, 0);
         JButton button = new JButton();
         button.setName(name);
@@ -133,7 +134,7 @@ public class Home {
         sideMenuAddButtonListener(window, button, sql);
     }
 
-    protected static void sideMenuAddButtonListener(JFrame window, JButton button, SQLConnector sql) {
+    private static void sideMenuAddButtonListener(JFrame window, JButton button, SQLConnector sql) {
         String name = button.getName();
 
         button.addMouseListener(new MouseAdapter() {

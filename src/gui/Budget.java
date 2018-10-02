@@ -2,13 +2,9 @@ package gui;
 
 import net.miginfocom.swing.MigLayout;
 import sqlConnector.SQLConnector;
-
 import javax.swing.*;
-import javax.swing.event.ListSelectionEvent;
-import javax.swing.event.ListSelectionListener;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableCellRenderer;
-import javax.swing.table.TableModel;
 import java.awt.*;
 import java.awt.event.*;
 import java.sql.ResultSet;
@@ -16,7 +12,8 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoField;
 import java.util.ArrayList;
-import java.util.regex.Pattern;
+import java.util.Objects;
+@SuppressWarnings("unchecked")
 
 class Budget {
 
@@ -133,14 +130,6 @@ class Budget {
         }
     }
 
-    private void listComponents() {
-        for (Component c : window.getContentPane().getComponents()) {
-            System.out.println(c.getName());
-            for (Component cc : ((JPanel) c).getComponents())
-                System.out.println("\t" + cc.getName());
-        }
-    }
-
     private void addTable() {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBackground(new Color(0, 0, 0, 0));
@@ -190,28 +179,29 @@ class Budget {
         jt.setGridColor(Color.decode("#c6d3eb"));
         jt.setIntercellSpacing(new Dimension(0, 1));
         jt.getColumnModel().getColumn(0).setPreferredWidth(jt.getColumnModel().getTotalColumnWidth() * 2);
-        jt.getSelectionModel().addListSelectionListener(new ListSelectionListener() {
-            @Override
-            public void valueChanged(ListSelectionEvent e) {
-                if (e.getValueIsAdjusting()) {
-                    JPanel tableOptions = null;
-                    for (Component c : window.getContentPane().getComponents())
-                        if (c.getName().equals("JPanel - Table options"))
-                            tableOptions = ((JPanel) c);
-                    for (Component c : window.getContentPane().getComponents())
-                        if (c.getName().equals("JPanel - Table")) {
-                            int row = ((JTable) ((((JScrollPane) ((JPanel) c).getComponent(0)).getViewport()).getView())).getSelectedRow();
-                            if (row == -1)
-                                return;
-                            if (isParentRow(data, row)) {
+        jt.getSelectionModel().addListSelectionListener(e -> {
+            if (e.getValueIsAdjusting()) {
+                JPanel tableOptions = null;
+                for (Component c : window.getContentPane().getComponents())
+                    if (c.getName().equals("JPanel - Table options"))
+                        tableOptions = ((JPanel) c);
+                for (Component c : window.getContentPane().getComponents())
+                    if (c.getName().equals("JPanel - Table")) {
+                        int row = ((JTable) ((((JScrollPane) ((JPanel) c).getComponent(0)).getViewport()).getView())).getSelectedRow();
+                        if (row == -1)
+                            return;
+                        if (isParentRow(data, row)) {
+                            if (tableOptions != null) {
                                 tableOptions.getComponent(1).setVisible(false);
                                 tableOptions.getComponent(2).setVisible(false);
-                            } else {
+                            }
+                        } else {
+                            if (tableOptions != null) {
                                 tableOptions.getComponent(1).setVisible(true);
                                 tableOptions.getComponent(2).setVisible(true);
                             }
                         }
-                }
+                    }
             }
         });
 
@@ -231,23 +221,15 @@ class Budget {
             l.addMouseListener(new MouseAdapter() {
                 @Override
                 public void mouseClicked(MouseEvent e) {
-                    JTable table = null;
-                    for (Component c : window.getContentPane().getComponents()) {
-                        if (c.getName().equals("JPanel - Table"))
-                            table = ((JTable) ((((JScrollPane) ((JPanel) c).getComponent(0)).getViewport()).getView()));
-                        if (c.getName().equals("JPanel - Table options"))
-                            c.setVisible(false);
-                    }
-
                     switch (l.getName().charAt(7)) {
                         case '1':
-                            addCategory(table);
+                            addCategory();
                             break;
                         case '2':
-                            removeCategory(table);
+                            removeCategory();
                             break;
                         case '3':
-                            editCategory(table);
+                            editCategory();
                             break;
                     }
                 }
@@ -288,19 +270,16 @@ class Budget {
         JComboBox<String> jc = new JComboBox<>(parentCats.toArray(new String[0]));
         jc.setFont(new Font("Lato", Font.PLAIN, 18));
         jc.setName("JComboBox - Parent categories");
-        jc.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                if (jc.getSelectedItem().toString().equals("<Add new parent category>"))
-                    for (Component c : panel.getComponents()) {
-                        if (c.getName().equals("JComboBox - Parent categories"))
-                            c.setVisible(false);
-                        if (c.getName().equals("JTextField - Parent category")) {
-                            c.setVisible(true);
-                            ((JTextField) c).setText("");
-                        }
+        jc.addActionListener(e -> {
+            if (Objects.requireNonNull(jc.getSelectedItem()).toString().equals("<Add new parent category>"))
+                for (Component c : panel.getComponents()) {
+                    if (c.getName().equals("JComboBox - Parent categories"))
+                        c.setVisible(false);
+                    if (c.getName().equals("JTextField - Parent category")) {
+                        c.setVisible(true);
+                        ((JTextField) c).setText("");
                     }
-            }
+                }
         });
         panel.add(jc, "dock north, hidemode 3");
 
@@ -367,14 +346,14 @@ class Budget {
                                 c.setVisible(true);
                             if (c.getName().equals("JPanel - Add category")) {
                                 c.setVisible(false);
-                                for(Component cc : ((JPanel) c).getComponents()) {
+                                for (Component cc : ((JPanel) c).getComponents()) {
                                     if (cc.getName().equals("JComboBox - Parent categories")) {
                                         cc.setVisible(true);
                                         ((JComboBox<String>) cc).setSelectedIndex(0);
                                     }
                                     if (cc.getName().equals("JTextField - Parent category"))
                                         cc.setVisible(false);
-                                    if(cc.getName().contains("JTextField"))
+                                    if (cc.getName().contains("JTextField"))
                                         ((JTextField) cc).setText("");
                                 }
                             }
@@ -395,15 +374,21 @@ class Budget {
         for (Component c : window.getContentPane().getComponents()) {
             if (c.getName().equals("JPanel - Add category")) {
                 for (Component cc : ((JPanel) c).getComponents()) {
-                    if (cc.getName().equals("JComboBox - Parent categories"))
-                        parCat = ((JComboBox<String>) cc).getSelectedItem().toString();
-                    else if (cc.getName().equals("JTextField - Parent category")) {
-                        if (!((JTextField) cc).getText().isEmpty())
-                            parCat = ((JTextField) cc).getText();
-                    } else if (cc.getName().equals("JTextField - Child categories"))
-                        childCat = ((JTextField) cc).getText();
-                    else if (cc.getName().equals("JTextField - Budgeted"))
-                        budgeted = ((JTextField) cc).getText();
+                    switch (cc.getName()) {
+                        case "JComboBox - Parent categories":
+                            parCat = Objects.requireNonNull(((JComboBox<String>) cc).getSelectedItem()).toString();
+                            break;
+                        case "JTextField - Parent category":
+                            if (!((JTextField) cc).getText().isEmpty())
+                                parCat = ((JTextField) cc).getText();
+                            break;
+                        case "JTextField - Child categories":
+                            childCat = ((JTextField) cc).getText();
+                            break;
+                        case "JTextField - Budgeted":
+                            budgeted = ((JTextField) cc).getText();
+                            break;
+                    }
                 }
                 break;
             }
@@ -420,10 +405,14 @@ class Budget {
                         error = ((JLabel) cc);
                 }
 
-        if (parCat.isEmpty() || childCat.isEmpty() || budgeted.isEmpty() || !isDouble)
-            error.setVisible(true);
-        else {
-            error.setVisible(false);
+        if (parCat.isEmpty() || childCat.isEmpty() || budgeted.isEmpty() || !isDouble) {
+            if (error != null) {
+                error.setVisible(true);
+            }
+        } else {
+            if (error != null) {
+                error.setVisible(false);
+            }
             int[] d = getDate();
             sql.update("INSERT INTO MonthBudget(`catID`, `dateMonth`, `dateYear`, `childName`, `parentName`, `budgeted`) VALUES " +
                     "('" + getNewCatID() + "', " + d[0] + ", " + d[1] + ", '" + childCat + "', '" + parCat + "', " + budgeted + ");");
@@ -433,7 +422,7 @@ class Budget {
                     c.setVisible(true);
                 if (c.getName().equals("JPanel - Add category")) {
                     c.setVisible(false);
-                    for(Component cc : ((JPanel) c).getComponents()) {
+                    for (Component cc : ((JPanel) c).getComponents()) {
                         if (cc.getName().equals("JTextField - Parent category")) {
                             cc.setVisible(false);
                             ((JTextField) cc).setText("");
@@ -610,16 +599,13 @@ class Budget {
         jcb.setFont(new Font("Lato", Font.PLAIN, 18));
         jcb.setForeground(Color.BLACK);
         jcb.setName("JComboBox - Parent category");
-        jcb.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                if(jcb.getSelectedItem().toString().equals("<Add new parent category>")) {
-                    for(Component c : panel.getComponents()) {
-                        if(c.getName().equals("JComboBox - Parent category"))
-                            c.setVisible(false);
-                        if(c.getName().equals("JTextField - Parent category"))
-                            c.setVisible(true);
-                    }
+        jcb.addActionListener(e -> {
+            if (Objects.requireNonNull(jcb.getSelectedItem()).toString().equals("<Add new parent category>")) {
+                for (Component c : panel.getComponents()) {
+                    if (c.getName().equals("JComboBox - Parent category"))
+                        c.setVisible(false);
+                    if (c.getName().equals("JTextField - Parent category"))
+                        c.setVisible(true);
                 }
             }
         });
@@ -699,10 +685,10 @@ class Budget {
                         c.setVisible(true);
                     if (c.getName().equals("JPanel - Edit category")) {
                         c.setVisible(false);
-                        for(Component cc : ((JPanel) c).getComponents()) {
-                            if(cc.getName().equals("JComboBox - Parent category"))
+                        for (Component cc : ((JPanel) c).getComponents()) {
+                            if (cc.getName().equals("JComboBox - Parent category"))
                                 cc.setVisible(true);
-                            if(cc.getName().equals("JTextField - Parent category")) {
+                            if (cc.getName().equals("JTextField - Parent category")) {
                                 cc.setVisible(false);
                                 ((JTextField) cc).setText("");
                             }
@@ -740,7 +726,7 @@ class Budget {
             } else if (c.getName().equals("JPanel - Edit category")) {
                 for (Component cc : ((JPanel) c).getComponents()) {
                     if (cc.getName().equals("JComboBox - Parent category"))
-                        parCat = ((JComboBox<String>) cc).getSelectedItem().toString();
+                        parCat = Objects.requireNonNull(((JComboBox<String>) cc).getSelectedItem()).toString();
                     else if (cc.getName().equals("JTextField - Parent category") && !((JTextField) cc).getText().isEmpty())
                         parCat = ((JTextField) cc).getText();
                     else if (cc.getName().equals("JTextField - Child category"))
@@ -764,6 +750,7 @@ class Budget {
         }
     }
 
+    @SuppressWarnings("ConstantConditions")
     private void addCategoryOption3FillInInfo(JPanel panel) {
         String parCat = "";
         String childCat = "";
@@ -786,14 +773,15 @@ class Budget {
         for (Component c : panel.getComponents()) {
             if (c.getName().equals("JComboBox - Parent category")) {
                 JComboBox<String> jcb = (JComboBox<String>) c;
-                for (int i = 0; i < jcb.size().height; i++)
+                for (int i = 0; i < jcb.getSize().height; i++)
                     if (jcb.getItemAt(i).equals(parCat)) {
                         jcb.setSelectedIndex(i);
                         break;
                     }
             }
-            if (c.getName().equals("JTextField - Child category"))
+            if (c.getName().equals("JTextField - Child category")) {
                 ((JTextField) c).setText(childCat);
+            }
             if (c.getName().equals("JTextField - Budgeted"))
                 ((JTextField) c).setText(budgeted);
         }
@@ -846,7 +834,7 @@ class Budget {
                     if (cc.getName().equals("Year"))
                         date[1] = Integer.parseInt(((JLabel) cc).getText().substring(2, 6));
                     if (cc.getName().contains("Month"))
-                        if (((JLabel) cc).getBackground().equals(Color.decode("#345998")))
+                        if (cc.getBackground().equals(Color.decode("#345998")))
                             date[0] = DateTimeFormatter.ofPattern("MMM").parse(((JLabel) cc).getText().charAt(2) +
                                     ((JLabel) cc).getText().substring(3, 5).toLowerCase()).get(ChronoField.MONTH_OF_YEAR);
                 }
@@ -887,8 +875,8 @@ class Budget {
     }
 
     private ArrayList<ArrayList<String>> getActivityAndAvailable(int month, int year, ArrayList<ArrayList<String>> data) {
-        for (int i = 0; i < data.size(); i++)
-            data.get(i).add("0");
+        for (ArrayList<String> aData : data)
+            aData.add("0");
 
         try {
             ResultSet rs = sql.select("SELECT * FROM Entry LEFT JOIN MonthBudget ON Entry.catID = " +
@@ -897,10 +885,10 @@ class Budget {
             while (rs.next()) {
                 String childCat = rs.getString("childName");
                 double activity = Double.parseDouble(rs.getString("outflow")) + Double.parseDouble(rs.getString("inflow"));
-                for (int i = 0; i < data.size(); i++)
-                    if (data.get(i).get(0).equals("\t" + childCat)) {
-                        double total = Double.parseDouble(data.get(i).get(2)) + activity;
-                        data.get(i).set(2, total + "");
+                for (ArrayList<String> aData : data)
+                    if (aData.get(0).equals("\t" + childCat)) {
+                        double total = Double.parseDouble(aData.get(2)) + activity;
+                        aData.set(2, total + "");
                         break;
                     }
             }
@@ -917,8 +905,8 @@ class Budget {
             }
         }
 
-        for (int i = 0; i < data.size(); i++)
-            data.get(i).add((Double.parseDouble(data.get(i).get(1)) - Double.parseDouble(data.get(i).get(2))) + "");
+        for (ArrayList<String> aData : data)
+            aData.add((Double.parseDouble(aData.get(1)) - Double.parseDouble(aData.get(2))) + "");
 
         return data;
     }
@@ -951,35 +939,35 @@ class Budget {
     }
 
     static String getNewCatID() {
-        String cID = "";
+        StringBuilder cID = new StringBuilder();
         for (int i = 0; i < 6; i++)
-            cID += (int) (Math.random() * 10) + "";
+            cID.append((int) (Math.random() * 10));
         try {
             ResultSet rs = new SQLConnector().select("SELECT * FROM MonthBudget");
             while (rs.next()) {
                 String id = rs.getString("catID");
-                if (id.equals(cID))
+                if (id.equals(cID.toString()))
                     return getNewCatID();
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
-        return cID;
+        return cID.toString();
     }
 
-    private void addCategory(JTable table) {
+    private void addCategory() {
         for (Component c : window.getContentPane().getComponents())
             if (c.getName().equals("JPanel - Add category"))
                 c.setVisible(true);
     }
 
-    private void removeCategory(JTable table) {
+    private void removeCategory() {
         for (Component c : window.getContentPane().getComponents())
             if (c.getName().equals("JPanel - Remove category"))
                 c.setVisible(true);
     }
 
-    private void editCategory(JTable table) {
+    private void editCategory() {
         for (Component c : window.getContentPane().getComponents())
             if (c.getName().equals("JPanel - Edit category")) {
                 c.setVisible(true);

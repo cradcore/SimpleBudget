@@ -16,7 +16,7 @@ public class Run {
         SQLConnector sql = new SQLConnector();
         JFrame window = new JFrame();
         window.setBounds(100, 100, 1600, 900);
-        window.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        window.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         window.setContentPane(new JPanel(new MigLayout("gap rel 0", "grow")));
         window.getContentPane().setName("Home content pane");
         window.addWindowListener(new WindowAdapter() {
@@ -27,19 +27,17 @@ public class Run {
             }
         });
 
-        EventQueue.invokeLater(new Runnable() {
-            public void run() {
-                try {
-                    new Home(window, sql);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
+        EventQueue.invokeLater(() -> {
+            try {
+                new Home(window, sql);
+            } catch (Exception e) {
+                e.printStackTrace();
             }
         });
     }
 
     private static void removeUnusedBudgetMonths(SQLConnector sql) {
-        ResultSet rs = new SQLConnector().select("SELECT * FROM MonthBudget m WHERE NOT EXISTS(SELECT * FROM Entry e WHERE m.dateYear = e.dateYear AND m.dateMonth = e.dateMonth)");
+        ResultSet rs = sql.select("SELECT * FROM MonthBudget m WHERE NOT EXISTS(SELECT * FROM Entry e WHERE m.dateYear = e.dateYear AND m.dateMonth = e.dateMonth)");
         try {
             while (rs.next()) {
                 String catID = rs.getString("catID");

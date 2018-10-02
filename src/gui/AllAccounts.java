@@ -6,13 +6,11 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableCellRenderer;
-
 import com.github.lgooddatepicker.components.DatePicker;
 import com.github.lgooddatepicker.components.DatePickerSettings;
 import net.miginfocom.layout.CC;
 import net.miginfocom.swing.*;
 import sqlConnector.SQLConnector;
-
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.text.NumberFormat;
@@ -20,6 +18,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Objects;
+@SuppressWarnings("unchecked")
 
 class AllAccounts {
 
@@ -79,14 +78,12 @@ class AllAccounts {
         jcb.setBackground(Color.decode("#547cc4"));
         jcb.setBorder(new EmptyBorder(0, 30, 0, 0));
         jcb.setVisible(false);
-        jcb.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                if (Objects.requireNonNull(jcb.getSelectedItem()).toString().equals("All Accounts")) {
-                    jcb.setVisible(false);
-                    viewAccountButton.setVisible(true);
-                }
-                viewOneAccount(jcb.getSelectedItem().toString());
+        jcb.addActionListener(e -> {
+            if (Objects.requireNonNull(jcb.getSelectedItem()).toString().equals("All Accounts")) {
+                jcb.setVisible(false);
+                viewAccountButton.setVisible(true);
             }
+            viewOneAccount(jcb.getSelectedItem().toString());
         });
         panel.add(jcb);
 
@@ -118,10 +115,10 @@ class AllAccounts {
             @Override
             public void mouseClicked(MouseEvent arg0) {
                 toggleTransactionButtons(true);
-                for(Component c : window.getContentPane().getComponents())
-                    if(c.getName().equals("JPanel - New Transaction"))
-                        for(Component cc : ((JPanel) c).getComponents())
-                            if(cc.getName().equals("JComboBox - Categories"))
+                for (Component c : window.getContentPane().getComponents())
+                    if (c.getName().equals("JPanel - New Transaction"))
+                        for (Component cc : ((JPanel) c).getComponents())
+                            if (cc.getName().equals("JComboBox - Categories"))
                                 ((JComboBox<String>) cc).setSelectedIndex(0);
             }
         });
@@ -236,7 +233,7 @@ class AllAccounts {
         ResultSet rs = sql.select(select);
         String entryID = null;
         try {
-            if(!rs.next())
+            if (!rs.next())
                 throw new SQLException(select);
             entryID = rs.getString("entryID");
         } catch (Exception e) {
@@ -374,12 +371,10 @@ class AllAccounts {
         jcb.setFont(new Font("Lato", Font.PLAIN, 14));
         jcb.setPreferredSize(new Dimension(100, 33));
         jcb.setVisible(true);
-        jcb.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
+        jcb.addActionListener(e -> {
 
-                if (Objects.requireNonNull(jcb.getSelectedItem()).equals("<Add New Account>"))
-                    addNewAccount(panel);
-            }
+            if (Objects.requireNonNull(jcb.getSelectedItem()).equals("<Add New Account>"))
+                addNewAccount(panel);
         });
         panel.add(jcb, "hidemode 3");
 
@@ -506,9 +501,9 @@ class AllAccounts {
 
         String account;
         if (((JTextField) jt.getComponent(1)).getText().equals("Account"))
-            account = ((JComboBox<String>) jt.getComponent(0)).getSelectedItem().toString();
+            account = Objects.requireNonNull(((JComboBox<String>) jt.getComponent(0)).getSelectedItem()).toString();
         else account = ((JTextField) jt.getComponent(1)).getText();
-        String cat = ((JComboBox<String>) jt.getComponent(4)).getSelectedItem().toString().split(" \\(")[0];
+        String cat = Objects.requireNonNull(((JComboBox<String>) jt.getComponent(4)).getSelectedItem()).toString().split(" \\(")[0];
         String[] data = {account, date, ((JTextField) jt.getComponent(3)).getText(),
                 cat, ((JTextField) jt.getComponent(5)).getText(),
                 ((JTextField) jt.getComponent(6)).getText(), ((JTextField) jt.getComponent(7)).getText()};
@@ -519,18 +514,18 @@ class AllAccounts {
         if (data[4].equals("Memo"))
             data[4] = "";
 
-        if (!checkTransactionValidity(jt, data))
+        if (!checkTransactionValidity(data))
             for (Component c : window.getContentPane().getComponents())
                 if (c.getName().equals("JPanel - New Transaction Buttons")) {
-                    ((JLabel) ((JPanel) c).getComponent(1)).setVisible(true);
+                    ((JPanel) c).getComponent(1).setVisible(true);
                     return false;
                 }
 
         for (Component c : window.getContentPane().getComponents())
             if (c.getName().equals("JPanel - New Transaction Buttons"))
-                ((JLabel) ((JPanel) c).getComponent(1)).setVisible(false);
+                ((JPanel) c).getComponent(1).setVisible(false);
 
-        String[] d = date.split("-");
+        String[] d = Objects.requireNonNull(date).split("-");
         String entryID = null;
         for (Component c : window.getContentPane().getComponents())
             if (c.getName().equals("JPanel - New Transaction"))
@@ -596,33 +591,31 @@ class AllAccounts {
         return false;
     }
 
-    private boolean checkTransactionValidity(JPanel panel, String[] data) {
-        if (data[0].equals("Account") || data[1].equals("Date") || data[2].equals("Payee") || data[3].equals("Category")
-                || data[5].equals("Outflow") || data[6].equals("Inflow"))
-            return false;
-        return true;
+    private boolean checkTransactionValidity(String[] data) {
+        return !data[0].equals("Account") && !data[1].equals("Date") && !data[2].equals("Payee") && !data[3].equals("Category")
+                && !data[5].equals("Outflow") && !data[6].equals("Inflow");
     }
 
-    public static String getEntryID() {
-        String ret = "";
+    static String getEntryID() {
+        StringBuilder ret = new StringBuilder();
         for (int i = 0; i < 6; i++)
-            ret += (int) (Math.random() * 10) + "";
+            ret.append((int) (Math.random() * 10));
         try {
             ResultSet rs = new SQLConnector().select("SELECT * FROM Entry");
             while (rs.next()) {
                 String id = rs.getString("entryID");
-                if (id.equals(ret)) {
+                if (id.equals(ret.toString())) {
                     return getEntryID();
                 }
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
-        return ret;
+        return ret.toString();
     }
 
     private String[][] getTableData(ResultSet rs) {
-        ArrayList<ArrayList<String>> entries = new ArrayList<ArrayList<String>>();
+        ArrayList<ArrayList<String>> entries = new ArrayList<>();
         try {
             while (rs.next()) {
                 ArrayList<String> entry = new ArrayList<>();

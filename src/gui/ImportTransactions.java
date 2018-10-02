@@ -1,28 +1,21 @@
 package gui;
 
-import com.sun.java.swing.plaf.motif.MotifInternalFrameTitlePane;
 import net.miginfocom.swing.MigLayout;
 import sqlConnector.SQLConnector;
-
 import javax.swing.*;
 import javax.swing.border.LineBorder;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
 import javax.swing.filechooser.FileNameExtensionFilter;
-import javax.swing.filechooser.FileSystemView;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.File;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Scanner;
+import java.util.*;
 import java.util.Timer;
-import java.util.TimerTask;
+@SuppressWarnings("unchecked")
 
 public class ImportTransactions {
 
-    private JFrame mainWindow;
     private JFrame window;
     private Scanner inFile;
     private String line;
@@ -30,8 +23,7 @@ public class ImportTransactions {
     private int csvSize = 0;
     private SQLConnector sql;
 
-    public ImportTransactions(JFrame mainWindow) {
-        this.mainWindow = mainWindow;
+    ImportTransactions(JFrame mainWindow) {
         sql = new SQLConnector();
         window = new JFrame();
         window.setBounds(500, 325, 800, 450);
@@ -201,7 +193,7 @@ public class ImportTransactions {
         panel.add(l1, "wrap, span 2");
 
         jtf.setName("JTextField - Description");
-        jtf.setPreferredSize(new Dimension((int) (window.getSize().width), 30));
+        jtf.setPreferredSize(new Dimension(window.getSize().width, 30));
         jtf.setFont(new Font("Lato", Font.PLAIN, 18));
         jtf.setHorizontalAlignment(JTextField.CENTER);
         jtf.setEditable(false);
@@ -298,18 +290,15 @@ public class ImportTransactions {
         jcb.setPreferredSize(new Dimension((int) (window.getSize().width * .4), 30));
         jcb.setBackground(Color.WHITE);
         jcb.setEnabled(false);
-        jcb.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                if (jcb.getSelectedItem().toString().equals("<Add new category>")) {
-                    jtf3.setVisible(true);
-                    jtf4.setVisible(true);
-                    jb.setVisible(true);
-                    jcb.setVisible(false);
-                    jtf2.requestFocus();
-                } else if (jcb.getSelectedIndex() != 0) {
-                    saveTransaction(jcb, jtf2, jtf3, jtf4, jb);
-                }
+        jcb.addActionListener(e -> {
+            if (Objects.requireNonNull(jcb.getSelectedItem()).toString().equals("<Add new category>")) {
+                jtf3.setVisible(true);
+                jtf4.setVisible(true);
+                jb.setVisible(true);
+                jcb.setVisible(false);
+                jtf2.requestFocus();
+            } else if (jcb.getSelectedIndex() != 0) {
+                saveTransaction(jcb, jtf2, jtf3, jtf4, jb);
             }
         });
         panel.add(jcb, "al right, wrap, hidemode 3");
@@ -326,9 +315,9 @@ public class ImportTransactions {
 
     private void saveTransaction(JComboBox<String> jcb, JTextField jtf2, JTextField jtf3, JTextField jtf4, JButton jb) {
         String des = line.split(",")[1],
-                childCat = null,
+                childCat,
                 payee = jtf2.getText();
-        if (jcb.getSelectedItem().toString().equals("<Add new category>"))
+        if (Objects.requireNonNull(jcb.getSelectedItem()).toString().equals("<Add new category>"))
             childCat = jtf4.getText();
         else childCat = jcb.getSelectedItem().toString();
         sql.update("INSERT INTO `simpleBudget`.`CategoryParser` (`description`, `childCategory`, `payee`) " +
@@ -436,16 +425,12 @@ public class ImportTransactions {
             ResultSet rs = sql.select("SELECT Entry.payee, B.childName FROM Entry LEFT JOIN MonthBudget B on Entry.catID = B.catID");
             while (rs.next()) {
                 String payee = rs.getString("payee");
-                if (des.toLowerCase().contains(payee.toLowerCase())) {
-                    String[] s = {rs.getString("childName"), payee};
-                    return s;
-                }
+                if (des.toLowerCase().contains(payee.toLowerCase()))
+                    return new String[]{rs.getString("childName"), payee};
             }
             rs = sql.select("SELECT * FROM CategoryParser WHERE description = '" + des + "'");
-            if (rs.next()) {
-                String[] s = {rs.getString("childCategory"), rs.getString("payee")};
-                return s;
-            }
+            if (rs.next())
+                return new String[]{rs.getString("childCategory"), rs.getString("payee")};
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -455,7 +440,7 @@ public class ImportTransactions {
     }
 
     private void addTransaction(String cat, String name) {
-        getProgressBar().setValue((int) ((Double.parseDouble(totalLines + "") / Double.parseDouble(csvSize + "")) * 100));
+        Objects.requireNonNull(getProgressBar()).setValue((int) ((Double.parseDouble(totalLines + "") / Double.parseDouble(csvSize + "")) * 100));
         getProgressBar().setStringPainted(true);
         String[]lineArr = line.split(",");
         String id = AllAccounts.getEntryID();
@@ -463,8 +448,8 @@ public class ImportTransactions {
         String[] date = lineArr[0].split("/");
         String catID = getCatID(cat, date[0], date[2]);
         String memo = lineArr[2];
-        String inflow = null;
-        String outflow = null;
+        String inflow;
+        String outflow;
         if (lineArr[4].charAt(0) == '(') {
             inflow = "0.00";
             outflow = lineArr[4].substring(2, lineArr[4].length() - 1);
@@ -497,29 +482,29 @@ public class ImportTransactions {
                 catID = rs.getString("catID");
             else {
                 JComboBox<String> jcb = null;
-                JTextField jtf2 = null,
-                        jtf3 = null,
+                JTextField jtf3 = null,
                         jtf4 = null;
                 for (Component c : window.getContentPane().getComponents()) {
                     if (c.getName().equals("JPanel - Import screen"))
                         for (Component cc : ((JPanel) c).getComponents()) {
-                            if (cc.getName().equals("JTextField - Name"))
-                                jtf2 = ((JTextField) cc);
-                            else if (cc.getName().equals("JTextField - Child category"))
-                                jtf3 = ((JTextField) cc);
-                            else if (cc.getName().equals("JTextField - Parent category"))
-                                jtf4 = ((JTextField) cc);
-                            else if (cc.getName().equals("JComboBox"))
-                                jcb = ((JComboBox<String>) cc);
+                            switch (cc.getName()) {
+                                case "JTextField - Child category":
+                                    jtf3 = ((JTextField) cc);
+                                    break;
+                                case "JTextField - Parent category":
+                                    jtf4 = ((JTextField) cc);
+                                    break;
+                                case "JComboBox":
+                                    jcb = ((JComboBox<String>) cc);
+                                    break;
+                            }
                         }
                 }
-                String childCat = null,
-                        parCat = null,
-                        payee = null;
-                payee = jtf2.getText();
-                if (jcb.getSelectedItem().toString().equals("<Add new category>")) {
-                    childCat = jtf3.getText();
-                    parCat = jtf4.getText();
+                String childCat,
+                        parCat;
+                if (Objects.requireNonNull(Objects.requireNonNull(jcb).getSelectedItem()).toString().equals("<Add new category>")) {
+                    childCat = Objects.requireNonNull(jtf3).getText();
+                    parCat = Objects.requireNonNull(jtf4).getText();
                 } else {
                     childCat = jcb.getSelectedItem().toString();
                     try {
@@ -529,6 +514,7 @@ public class ImportTransactions {
                         parCat = rs.getString("parentName");
                     } catch (Exception e) {
                         e.printStackTrace();
+                        parCat = null;
                     }
                 }
                 sql.update("INSERT INTO MonthBudget(`catID`, `dateMonth`, `dateYear`, `childName`, `parentName`, `budgeted`) VALUES " +
