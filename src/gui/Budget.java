@@ -2,6 +2,7 @@ package gui;
 
 import net.miginfocom.swing.MigLayout;
 import sqlConnector.SQLConnector;
+
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableCellRenderer;
@@ -13,8 +14,8 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoField;
 import java.util.ArrayList;
 import java.util.Objects;
-@SuppressWarnings("unchecked")
 
+@SuppressWarnings("unchecked")
 class Budget {
 
     // Class variables
@@ -888,7 +889,7 @@ class Budget {
                 for (ArrayList<String> aData : data)
                     if (aData.get(0).equals("\t" + childCat)) {
                         double total = Double.parseDouble(aData.get(2)) + activity;
-                        aData.set(2, total + "");
+                        aData.set(2, String.format("%.2f", total));
                         break;
                     }
             }
@@ -901,12 +902,12 @@ class Budget {
                 double total = 0;
                 for (int j = i + 1; j < data.size() && data.get(j).get(0).charAt(0) == '\t'; j++)
                     total += Double.parseDouble(data.get(j).get(2));
-                data.get(i).set(2, total + "");
+                data.get(i).set(2, String.format("%.2f", total));
             }
         }
 
         for (ArrayList<String> aData : data)
-            aData.add((Double.parseDouble(aData.get(1)) - Double.parseDouble(aData.get(2))) + "");
+            aData.add(String.format("%.2f", Double.parseDouble(aData.get(1)) - Double.parseDouble(aData.get(2))));
 
         return data;
     }
@@ -956,22 +957,31 @@ class Budget {
     }
 
     private void addCategory() {
-        for (Component c : window.getContentPane().getComponents())
+        for (Component c : window.getContentPane().getComponents()) {
             if (c.getName().equals("JPanel - Add category"))
                 c.setVisible(true);
+            else if (c.getName().equals("JPanel - Table options"))
+                c.setVisible(false);
+        }
     }
 
     private void removeCategory() {
-        for (Component c : window.getContentPane().getComponents())
+        for (Component c : window.getContentPane().getComponents()) {
             if (c.getName().equals("JPanel - Remove category"))
                 c.setVisible(true);
+            else if (c.getName().equals("JPanel - Table options"))
+                c.setVisible(false);
+        }
     }
 
     private void editCategory() {
-        for (Component c : window.getContentPane().getComponents())
+        for (Component c : window.getContentPane().getComponents()) {
             if (c.getName().equals("JPanel - Edit category")) {
                 c.setVisible(true);
                 addCategoryOption3FillInInfo(((JPanel) c));
             }
+            else if(c.getName().equals("JPanel - Table options"))
+                c.setVisible(false);
+        }
     }
 }
